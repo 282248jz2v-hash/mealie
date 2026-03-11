@@ -9,7 +9,7 @@
     @submit="onSubmit"
     @cancel="onCancel"
   >
-    <v-card-text>
+    <v-card-text class="px-3 px-sm-4 pt-3">
       <v-form
         ref="formRef"
         @submit.prevent
@@ -24,16 +24,14 @@
               :prepend-inner-icon="$globals.icons.bellAlert"
               :rules="[v => !!v || 'Name is required']"
               variant="outlined"
-              density="compact"
+              density="comfortable"
+              autocomplete="off"
               required
             />
           </v-col>
 
           <!-- Category + Color -->
-          <v-col
-            cols="8"
-            sm="9"
-          >
+          <v-col cols="8">
             <v-select
               v-model="form.category"
               label="Category"
@@ -42,91 +40,84 @@
               item-value="value"
               :prepend-inner-icon="categoryIcon(form.category)"
               variant="outlined"
-              density="compact"
+              density="comfortable"
             />
           </v-col>
-          <v-col
-            cols="4"
-            sm="3"
-          >
-            <v-menu :close-on-content-click="false">
+          <v-col cols="4">
+            <v-menu
+              v-model="colorMenuOpen"
+              :close-on-content-click="false"
+              location="bottom"
+            >
               <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
                   block
                   variant="outlined"
-                  style="height: 40px; border-color: rgba(0,0,0,0.38);"
                   class="color-picker-btn"
+                  style="height: 48px; border-color: rgba(128,128,128,0.4);"
                 >
-                  <v-icon
-                    start
-                    :color="form.color"
-                  >
-                    {{ $globals.icons.formatColorFill }}
-                  </v-icon>
+                  <span
+                    class="color-swatch-preview mr-2"
+                    :style="{ background: form.color }"
+                  />
                   Color
                 </v-btn>
               </template>
-              <v-card class="pa-3">
-                <div class="d-flex flex-wrap ga-2" style="max-width: 200px">
-                  <v-btn
+              <v-card class="pa-3" elevation="8">
+                <div
+                  class="color-grid"
+                >
+                  <button
                     v-for="c in colorPalette"
                     :key="c"
-                    :color="c"
-                    icon
-                    size="small"
-                    :variant="form.color === c ? 'elevated' : 'flat'"
-                    @click="form.color = c"
+                    class="color-dot"
+                    :class="{ 'color-dot--active': form.color === c }"
+                    :style="{ background: c }"
+                    type="button"
+                    :aria-label="c"
+                    @click="selectColor(c)"
                   >
                     <v-icon
                       v-if="form.color === c"
-                      size="14"
+                      color="white"
+                      size="16"
                     >
                       {{ $globals.icons.check }}
                     </v-icon>
-                  </v-btn>
+                  </button>
                 </div>
               </v-card>
             </v-menu>
           </v-col>
 
-          <!-- Cost -->
-          <v-col
-            cols="6"
-            sm="5"
-          >
+          <!-- Cost + Currency side by side -->
+          <v-col cols="7">
             <v-text-field
               v-model.number="form.cost"
               label="Cost"
               type="number"
               min="0"
               step="0.01"
+              inputmode="decimal"
               :prepend-inner-icon="$globals.icons.chart"
               :rules="[v => (v !== null && v !== '' && v >= 0) || 'Enter a valid cost']"
               variant="outlined"
-              density="compact"
+              density="comfortable"
             />
           </v-col>
-
-          <!-- Currency -->
-          <v-col
-            cols="6"
-            sm="3"
-          >
+          <v-col cols="5">
             <v-select
               v-model="form.currency"
               label="Currency"
               :items="currencies"
               variant="outlined"
-              density="compact"
+              density="comfortable"
             />
           </v-col>
 
           <!-- Billing Cycle -->
-          <v-col
-            cols="12"
-            sm="4"
-          >
+          <v-col cols="12">
             <v-select
               v-model="form.billingCycle"
               label="Billing Cycle"
@@ -135,7 +126,7 @@
               item-value="value"
               :prepend-inner-icon="$globals.icons.calendarWeek"
               variant="outlined"
-              density="compact"
+              density="comfortable"
             />
           </v-col>
 
@@ -148,7 +139,7 @@
               :prepend-inner-icon="$globals.icons.calendarToday"
               :rules="[v => !!v || 'Renewal date is required']"
               variant="outlined"
-              density="compact"
+              density="comfortable"
               required
             />
           </v-col>
@@ -161,7 +152,7 @@
               rows="2"
               auto-grow
               variant="outlined"
-              density="compact"
+              density="comfortable"
             />
           </v-col>
 
@@ -172,7 +163,6 @@
               color="primary"
               hide-details
               label="Active subscription"
-              density="compact"
             />
           </v-col>
         </v-row>
@@ -206,6 +196,7 @@ const dialog = computed({
 });
 
 const isEdit = computed(() => !!props.editForm);
+const colorMenuOpen = ref(false);
 
 const defaultForm = (): SubscriptionForm => ({
   name: "",
@@ -247,19 +238,24 @@ const billingCycleOptions: { label: string; value: BillingCycle }[] = [
 const currencies = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF", "CNY"];
 
 const colorPalette = [
-  "#5C6BC0", // indigo
-  "#42A5F5", // blue
-  "#26C6DA", // cyan
-  "#26A69A", // teal
-  "#66BB6A", // green
-  "#D4E157", // lime
-  "#FFCA28", // amber
-  "#FFA726", // orange
-  "#EF5350", // red
-  "#EC407A", // pink
-  "#AB47BC", // purple
-  "#78909C", // blue-grey
+  "#5C6BC0",
+  "#42A5F5",
+  "#26C6DA",
+  "#26A69A",
+  "#66BB6A",
+  "#D4E157",
+  "#FFCA28",
+  "#FFA726",
+  "#EF5350",
+  "#EC407A",
+  "#AB47BC",
+  "#78909C",
 ];
+
+function selectColor(c: string) {
+  form.value.color = c;
+  colorMenuOpen.value = false;
+}
 
 function categoryIcon(cat: SubscriptionCategory): string {
   const map: Record<SubscriptionCategory, string> = {
@@ -287,5 +283,43 @@ function onCancel() {
 .color-picker-btn {
   text-transform: none;
   letter-spacing: 0;
+}
+
+.color-swatch-preview {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+/* 4-column grid of big, easy-to-tap colour dots */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.color-dot {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.color-dot:active {
+  transform: scale(0.9);
+}
+
+.color-dot--active {
+  border-color: rgba(0, 0, 0, 0.4);
+  transform: scale(1.1);
 }
 </style>

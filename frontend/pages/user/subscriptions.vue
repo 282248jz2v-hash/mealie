@@ -1,5 +1,8 @@
 <template>
-  <v-container class="pb-12">
+  <v-container
+    class="pb-20 px-2 px-sm-4"
+    style="max-width: 1200px"
+  >
     <!-- Add / Edit dialog -->
     <SubscriptionDialog
       v-model="dialogOpen"
@@ -22,26 +25,27 @@
     </BaseDialog>
 
     <!-- ─── Page header ─────────────────────────────────── -->
-    <div class="d-flex align-center flex-wrap ga-3 mt-4 mb-6">
-      <div>
-        <h1 class="text-h4 font-weight-bold d-flex align-center ga-2">
+    <div class="d-flex align-center mt-3 mb-5">
+      <div class="flex-grow-1 min-width-0">
+        <h1 class="font-weight-bold d-flex align-center ga-2 text-h5 text-sm-h4">
           <v-icon
             color="primary"
-            size="36"
+            size="28"
           >
             {{ $globals.icons.bellAlert }}
           </v-icon>
           Subscription Auditor
         </h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">
-          Track recurring costs and get alerted before renewals hit.
+        <p class="text-caption text-sm-body-2 text-medium-emphasis mt-1 mb-0">
+          Track recurring costs and get alerted before renewals.
         </p>
       </div>
-      <v-spacer />
+      <!-- Only show text button on sm+ — on xs we use the FAB -->
       <v-btn
         color="primary"
         :prepend-icon="$globals.icons.createAlt"
         rounded="lg"
+        class="d-none d-sm-flex ml-3 flex-shrink-0"
         @click="openAddDialog"
       >
         Add Subscription
@@ -56,107 +60,56 @@
         type="warning"
         variant="tonal"
         border="start"
-        class="mb-3"
+        class="mb-2"
         density="compact"
         :icon="$globals.icons.bellAlert"
         closable
       >
         <span class="font-weight-medium">{{ sub.name }}</span>
-        renews
-        <strong>{{ renewalLabel(sub) }}</strong>
-        — {{ formatCurrency(sub.cost, sub.currency) }} / {{ sub.billingCycle }}
+        renews <strong>{{ renewalLabel(sub) }}</strong>
+        — {{ formatCurrency(sub.cost, sub.currency) }}/{{ sub.billingCycle }}
       </v-alert>
     </template>
 
     <!-- ─── Stats row ──────────────────────────────────── -->
     <v-row
       dense
-      class="mb-4"
+      class="mb-3"
     >
       <v-col
+        v-for="stat in statsCards"
+        :key="stat.label"
         cols="6"
         sm="3"
       >
         <v-card
           variant="tonal"
-          color="primary"
+          :color="stat.color"
           rounded="lg"
-          class="pa-4 text-center"
+          class="pa-3 text-center"
         >
-          <div class="text-caption text-uppercase font-weight-bold opacity-70">
-            Monthly Cost
+          <div class="text-caption text-uppercase font-weight-bold opacity-70 text-truncate">
+            {{ stat.label }}
           </div>
-          <div class="text-h5 font-weight-bold mt-1">
-            {{ formatCurrency(totalMonthlyCost, 'USD') }}
-          </div>
-        </v-card>
-      </v-col>
-      <v-col
-        cols="6"
-        sm="3"
-      >
-        <v-card
-          variant="tonal"
-          color="secondary"
-          rounded="lg"
-          class="pa-4 text-center"
-        >
-          <div class="text-caption text-uppercase font-weight-bold opacity-70">
-            Yearly Cost
-          </div>
-          <div class="text-h5 font-weight-bold mt-1">
-            {{ formatCurrency(totalYearlyCost, 'USD') }}
-          </div>
-        </v-card>
-      </v-col>
-      <v-col
-        cols="6"
-        sm="3"
-      >
-        <v-card
-          variant="tonal"
-          :color="upcomingRenewals.length ? 'warning' : 'success'"
-          rounded="lg"
-          class="pa-4 text-center"
-        >
-          <div class="text-caption text-uppercase font-weight-bold opacity-70">
-            Renewing Soon
-          </div>
-          <div class="text-h5 font-weight-bold mt-1">
-            {{ upcomingRenewals.length }}
-          </div>
-        </v-card>
-      </v-col>
-      <v-col
-        cols="6"
-        sm="3"
-      >
-        <v-card
-          variant="tonal"
-          color="info"
-          rounded="lg"
-          class="pa-4 text-center"
-        >
-          <div class="text-caption text-uppercase font-weight-bold opacity-70">
-            Active Subs
-          </div>
-          <div class="text-h5 font-weight-bold mt-1">
-            {{ activeCount }}
+          <div class="text-h6 text-sm-h5 font-weight-bold mt-1 text-truncate">
+            {{ stat.value }}
           </div>
         </v-card>
       </v-col>
     </v-row>
 
     <!-- ─── Filter / Sort bar ──────────────────────────── -->
-    <div class="d-flex align-center flex-wrap ga-2 mb-4">
+    <!-- Category chips — horizontal scroll on mobile, no wrap -->
+    <div class="mb-2 filter-scroll-row">
       <v-chip-group
         v-model="selectedCategory"
         selected-class="text-primary font-weight-bold"
-        column
+        mandatory
       >
         <v-chip
           value="all"
           variant="outlined"
+          size="small"
         >
           All
         </v-chip>
@@ -166,13 +119,16 @@
           :value="cat.value"
           :prepend-icon="categoryIcon(cat.value)"
           variant="outlined"
+          size="small"
         >
           {{ cat.label }}
         </v-chip>
       </v-chip-group>
+    </div>
 
-      <v-spacer />
-
+    <!-- Sort — icon-only on xs, labelled on sm+ -->
+    <div class="d-flex align-center justify-end mb-4">
+      <span class="text-caption text-medium-emphasis mr-2">Sort:</span>
       <v-btn-toggle
         v-model="sortKey"
         mandatory
@@ -184,23 +140,26 @@
         <v-btn
           value="renewal"
           size="small"
-          :prepend-icon="$globals.icons.calendarToday"
+          :icon="$vuetify.display.xs ? $globals.icons.calendarToday : undefined"
+          :prepend-icon="!$vuetify.display.xs ? $globals.icons.calendarToday : undefined"
         >
-          Renewal
+          <span class="d-none d-sm-inline">Renewal</span>
         </v-btn>
         <v-btn
           value="cost"
           size="small"
-          :prepend-icon="$globals.icons.chart"
+          :icon="$vuetify.display.xs ? $globals.icons.chart : undefined"
+          :prepend-icon="!$vuetify.display.xs ? $globals.icons.chart : undefined"
         >
-          Cost
+          <span class="d-none d-sm-inline">Cost</span>
         </v-btn>
         <v-btn
           value="name"
           size="small"
-          :prepend-icon="$globals.icons.sortAlphabeticalAscending"
+          :icon="$vuetify.display.xs ? $globals.icons.sortAlphabeticalAscending : undefined"
+          :prepend-icon="!$vuetify.display.xs ? $globals.icons.sortAlphabeticalAscending : undefined"
         >
-          Name
+          <span class="d-none d-sm-inline">Name</span>
         </v-btn>
       </v-btn-toggle>
     </div>
@@ -208,16 +167,16 @@
     <!-- ─── Empty state ────────────────────────────────── -->
     <div
       v-if="!filteredSubscriptions.length"
-      class="d-flex flex-column align-center justify-center py-16"
+      class="d-flex flex-column align-center justify-center py-12"
     >
       <v-icon
-        size="72"
+        size="64"
         color="grey-lighten-1"
       >
         {{ $globals.icons.bellPlus }}
       </v-icon>
-      <p class="text-h6 text-medium-emphasis mt-4">
-        {{ subscriptions.length === 0 ? 'No subscriptions yet' : 'No subscriptions match the filter' }}
+      <p class="text-h6 text-medium-emphasis mt-4 text-center px-4">
+        {{ subscriptions.length === 0 ? 'No subscriptions yet' : 'No subscriptions match this filter' }}
       </p>
       <v-btn
         v-if="subscriptions.length === 0"
@@ -231,7 +190,7 @@
       </v-btn>
     </div>
 
-    <!-- ─── Subscription grid ──────────────────────────── -->
+    <!-- ─── Subscription list ──────────────────────────── -->
     <v-row
       v-else
       dense
@@ -250,24 +209,24 @@
           variant="outlined"
         >
           <!-- Card header -->
-          <v-card-item class="pb-1">
+          <v-card-item class="py-2 px-3">
             <template #prepend>
               <v-avatar
                 :color="sub.color"
-                size="40"
+                size="38"
               >
                 <v-icon
-                  size="22"
+                  size="20"
                   color="white"
                 >
                   {{ categoryIcon(sub.category) }}
                 </v-icon>
               </v-avatar>
             </template>
-            <v-card-title class="text-subtitle-1 font-weight-bold">
+            <v-card-title class="text-subtitle-1 font-weight-bold pa-0">
               {{ sub.name }}
             </v-card-title>
-            <v-card-subtitle>
+            <v-card-subtitle class="pa-0">
               {{ categoryLabel(sub.category) }}
             </v-card-subtitle>
             <template #append>
@@ -275,45 +234,44 @@
                 :color="sub.active ? 'success' : 'grey'"
                 size="x-small"
                 variant="tonal"
-                class="ml-1"
               >
                 {{ sub.active ? 'Active' : 'Paused' }}
               </v-chip>
             </template>
           </v-card-item>
 
-          <v-card-text class="pt-0 pb-2">
+          <v-card-text class="pt-1 pb-2 px-3">
             <!-- Cost row -->
-            <div class="d-flex align-center ga-1 mb-1">
+            <div class="d-flex align-center flex-wrap ga-1 mb-1">
               <v-icon
-                size="16"
+                size="15"
                 color="secondary"
               >
                 {{ $globals.icons.chart }}
               </v-icon>
-              <span class="text-h6 font-weight-bold">
+              <span class="text-subtitle-1 font-weight-bold">
                 {{ formatCurrency(sub.cost, sub.currency) }}
               </span>
               <span class="text-caption text-medium-emphasis">/ {{ sub.billingCycle }}</span>
               <span
                 v-if="sub.billingCycle !== 'monthly'"
-                class="text-caption text-medium-emphasis ml-1"
+                class="text-caption text-medium-emphasis"
               >
                 ({{ formatCurrency(toMonthlyCost(sub), sub.currency) }}/mo)
               </span>
             </div>
 
-            <!-- Renewal date row -->
+            <!-- Renewal row -->
             <div
               class="d-flex align-center ga-1"
               :class="renewalUrgencyClass(sub)"
             >
-              <v-icon size="16">
+              <v-icon size="15">
                 {{ $globals.icons.calendarToday }}
               </v-icon>
               <span class="text-body-2">
                 {{ renewalLabel(sub) }}
-                <span class="text-caption">({{ formatDate(sub.nextRenewalDate) }})</span>
+                <span class="text-caption opacity-70">({{ formatDate(sub.nextRenewalDate) }})</span>
               </span>
             </div>
 
@@ -329,21 +287,22 @@
 
           <v-divider class="mx-3" />
 
-          <v-card-actions class="px-3 py-2">
+          <!-- Tall action row for easy tapping -->
+          <v-card-actions class="px-2 py-0" style="min-height: 52px">
             <v-btn
-              size="small"
               variant="text"
               :prepend-icon="$globals.icons.edit"
+              style="min-height: 44px"
               @click="openEditDialog(sub)"
             >
               Edit
             </v-btn>
             <v-spacer />
             <v-btn
-              size="small"
               variant="text"
               color="error"
               :prepend-icon="$globals.icons.delete"
+              style="min-height: 44px"
               @click="openDeleteDialog(sub)"
             >
               Delete
@@ -352,6 +311,17 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- ─── FAB (mobile only) ──────────────────────────── -->
+    <v-fab
+      class="d-flex d-sm-none"
+      color="primary"
+      :icon="$globals.icons.createAlt"
+      location="bottom end"
+      size="large"
+      app
+      @click="openAddDialog"
+    />
   </v-container>
 </template>
 
@@ -467,6 +437,30 @@ export default defineNuxtComponent({
 
     const activeCount = computed(() => subscriptions.value.filter(s => s.active).length);
 
+    // ── Stats ─────────────────────────────────────────────
+    const statsCards = computed(() => [
+      {
+        label: "Monthly",
+        value: formatCurrency(totalMonthlyCost.value, "USD"),
+        color: "primary",
+      },
+      {
+        label: "Yearly",
+        value: formatCurrency(totalYearlyCost.value, "USD"),
+        color: "secondary",
+      },
+      {
+        label: "Soon",
+        value: String(upcomingRenewals.value.length),
+        color: upcomingRenewals.value.length ? "warning" : "success",
+      },
+      {
+        label: "Active",
+        value: String(activeCount.value),
+        color: "info",
+      },
+    ]);
+
     // ── Helpers ───────────────────────────────────────────
     function formatCurrency(amount: number, currency: string): string {
       return new Intl.NumberFormat("en-US", {
@@ -484,11 +478,10 @@ export default defineNuxtComponent({
 
     function renewalLabel(sub: Subscription): string {
       const days = daysUntilRenewal(sub);
-      if (days < 0) return `overdue by ${Math.abs(days)}d`;
+      if (days < 0) return `overdue ${Math.abs(days)}d`;
       if (days === 0) return "today";
       if (days === 1) return "tomorrow";
-      if (days <= 7) return `in ${days} days`;
-      return `in ${days} days`;
+      return `in ${days}d`;
     }
 
     function renewalUrgencyClass(sub: Subscription): string {
@@ -526,9 +519,7 @@ export default defineNuxtComponent({
       subscriptions,
       filteredSubscriptions,
       upcomingRenewals,
-      totalMonthlyCost,
-      totalYearlyCost,
-      activeCount,
+      statsCards,
       toMonthlyCost,
       // dialog
       dialogOpen,
@@ -558,9 +549,19 @@ export default defineNuxtComponent({
 
 <style scoped>
 .subscription-card {
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.15s ease;
 }
 .subscription-card:hover {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Horizontally scrollable filter row — no line wrap, hides scrollbar visually */
+.filter-scroll-row {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.filter-scroll-row::-webkit-scrollbar {
+  display: none;
 }
 </style>
