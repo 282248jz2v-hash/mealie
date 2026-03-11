@@ -1,21 +1,35 @@
 import json
 import uuid
 from datetime import date, datetime, timedelta
-from pathlib import Path
 
 import streamlit as st
+from streamlit_local_storage import LocalStorage
 
-# ── Persistence ────────────────────────────────────────────────────────────────
+# ── Page config (must be first) ────────────────────────────────────────────────
 
-DATA_FILE = Path(__file__).parent / "subscriptions.json"
+st.set_page_config(
+    page_title="Subscription Auditor",
+    page_icon="🔔",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
+
+# ── Local-storage persistence ──────────────────────────────────────────────────
+# Data lives in the browser — survives refreshes, works on any device.
+
+_ls = LocalStorage()
 
 def load() -> list[dict]:
-    if DATA_FILE.exists():
-        return json.loads(DATA_FILE.read_text())
-    return []
+    raw = _ls.getItem("subscriptions")
+    if not raw:
+        return []
+    try:
+        return json.loads(raw) if isinstance(raw, str) else raw
+    except Exception:
+        return []
 
 def save(subs: list[dict]):
-    DATA_FILE.write_text(json.dumps(subs, indent=2, default=str))
+    _ls.setItem("subscriptions", json.dumps(subs, default=str))
 
 # ── Session state bootstrap ────────────────────────────────────────────────────
 
@@ -28,7 +42,7 @@ if "delete_id" not in st.session_state:
 if "show_form" not in st.session_state:
     st.session_state.show_form = False
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# ── Constants ──────────────────────────────────────────────────────────────────
 
 CATEGORIES = ["AI Tools", "Gaming", "Streaming", "Software", "Other"]
 CYCLES     = ["weekly", "monthly", "yearly"]
@@ -47,6 +61,8 @@ CURRENCY_SYMBOLS = {
     "AUD": "A$", "JPY": "¥", "CHF": "CHF", "CNY": "¥",
 }
 
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
 def fmt(amount: float, currency: str = "USD") -> str:
     sym = CURRENCY_SYMBOLS.get(currency, currency + " ")
     return f"{sym}{amount:,.2f}"
@@ -54,8 +70,7 @@ def fmt(amount: float, currency: str = "USD") -> str:
 def to_monthly(sub: dict) -> float:
     if not sub.get("active", True):
         return 0.0
-    c = sub["cost"]
-    cycle = sub["billing_cycle"]
+    c, cycle = sub["cost"], sub["billing_cycle"]
     if cycle == "monthly": return c
     if cycle == "yearly":  return c / 12
     if cycle == "weekly":  return c * 4.33
@@ -64,8 +79,7 @@ def to_monthly(sub: dict) -> float:
 def to_yearly(sub: dict) -> float:
     if not sub.get("active", True):
         return 0.0
-    c = sub["cost"]
-    cycle = sub["billing_cycle"]
+    c, cycle = sub["cost"], sub["billing_cycle"]
     if cycle == "monthly": return c * 12
     if cycle == "yearly":  return c
     if cycle == "weekly":  return c * 52
@@ -87,7 +101,8 @@ def upsert(form: dict):
     subs = st.session_state.subs
     if form["id"]:
         st.session_state.subs = [
-            {**s, **{k: v for k, v in form.items() if k != "id"}} if s["id"] == form["id"] else s
+            {**s, **{k: v for k, v in form.items() if k != "id"}}
+            if s["id"] == form["id"] else s
             for s in subs
         ]
     else:
@@ -101,40 +116,27 @@ def delete(sub_id: str):
     st.session_state.subs = [s for s in st.session_state.subs if s["id"] != sub_id]
     save(st.session_state.subs)
 
-# ── Page config ────────────────────────────────────────────────────────────────
-
-st.set_page_config(
-    page_title="Subscription Auditor",
-    page_icon="🔔",
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
+# ── Styles ─────────────────────────────────────────────────────────────────────
 
 st.markdown("""
 <style>
-  /* tighten top padding */
   .block-container { padding-top: 1.5rem; }
-  /* stat card style */
   .stat-card {
     background: var(--secondary-background-color);
-    border-radius: 12px;
-    padding: 14px 16px;
-    text-align: center;
+    border-radius: 12px; padding: 14px 10px; text-align: center;
   }
-  .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .05em; opacity: .65; }
-  .stat-value { font-size: 1.45rem; font-weight: 700; margin-top: 2px; }
-  /* sub card */
+  .stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing:.05em; opacity:.65; }
+  .stat-value { font-size: 1.3rem; font-weight: 700; margin-top: 2px; }
   .sub-card {
     border-radius: 12px;
     border: 1px solid var(--secondary-background-color);
-    padding: 14px 16px 10px;
+    padding: 14px 16px 8px;
     margin-bottom: 10px;
     background: var(--secondary-background-color);
   }
-  .sub-name  { font-size: 1.05rem; font-weight: 700; }
-  .sub-meta  { font-size: 0.8rem; opacity: .7; }
-  .sub-cost  { font-size: 1.15rem; font-weight: 700; }
-  /* alert */
+  .sub-name { font-size: 1.05rem; font-weight: 700; }
+  .sub-meta { font-size: 0.8rem; opacity: .7; }
+  .sub-cost { font-size: 1.1rem; font-weight: 700; }
   .renewal-alert {
     background: #fff3cd; color: #856404;
     border-left: 4px solid #ffc107;
@@ -151,7 +153,7 @@ with col_title:
     st.markdown("## 🔔 Subscription Auditor")
     st.caption("Track recurring costs · get alerted before renewals hit")
 with col_btn:
-    st.write("")  # vertical alignment nudge
+    st.write("")
     if st.button("➕ Add", use_container_width=True, type="primary"):
         st.session_state.show_form = True
         st.session_state.edit_id   = None
@@ -176,52 +178,43 @@ if st.session_state.show_form or editing:
                 index=CATEGORIES.index(editing["category"]) if editing else 0,
             )
             billing_cycle = c2.selectbox(
-                "Billing cycle",
-                CYCLES,
+                "Billing cycle", CYCLES,
                 index=CYCLES.index(editing["billing_cycle"]) if editing else 1,
             )
-
             c3, c4 = st.columns([2, 1])
             cost = c3.number_input(
-                "Cost *",
-                min_value=0.0, step=0.01, format="%.2f",
+                "Cost *", min_value=0.0, step=0.01, format="%.2f",
                 value=float(editing["cost"]) if editing else 0.0,
             )
             currency = c4.selectbox(
-                "Currency",
-                CURRENCIES,
+                "Currency", CURRENCIES,
                 index=CURRENCIES.index(editing["currency"]) if editing else 0,
             )
-
             default_renewal = (
                 datetime.strptime(editing["next_renewal"], "%Y-%m-%d").date()
                 if editing else date.today() + timedelta(days=30)
             )
             next_renewal = st.date_input("Next renewal date *", value=default_renewal)
-
-            notes  = st.text_area("Notes (optional)", value=editing.get("notes", "") if editing else "", height=80)
+            notes  = st.text_area("Notes (optional)", value=editing.get("notes", "") if editing else "", height=72)
             active = st.toggle("Active subscription", value=editing.get("active", True) if editing else True)
 
-            submitted = st.form_submit_button(
+            if st.form_submit_button(
                 "💾 Save Changes" if editing else "✅ Add Subscription",
-                use_container_width=True,
-                type="primary",
-            )
-
-            if submitted:
+                use_container_width=True, type="primary",
+            ):
                 if not name.strip():
                     st.error("Service name is required.")
                 else:
                     upsert({
-                        "id":           editing["id"] if editing else None,
-                        "name":         name.strip(),
-                        "category":     category,
-                        "cost":         cost,
-                        "currency":     currency,
+                        "id":            editing["id"] if editing else None,
+                        "name":          name.strip(),
+                        "category":      category,
+                        "cost":          cost,
+                        "currency":      currency,
                         "billing_cycle": billing_cycle,
-                        "next_renewal": next_renewal.isoformat(),
-                        "notes":        notes.strip(),
-                        "active":       active,
+                        "next_renewal":  next_renewal.isoformat(),
+                        "notes":         notes.strip(),
+                        "active":        active,
                     })
                     st.session_state.show_form = False
                     st.session_state.edit_id   = None
@@ -236,14 +229,14 @@ st.divider()
 
 subs = st.session_state.subs
 
-# ── Upcoming renewal alerts ────────────────────────────────────────────────────
+# ── Renewal alerts ─────────────────────────────────────────────────────────────
 
 upcoming = sorted(
     [s for s in subs if s.get("active", True) and 0 <= days_until(s) <= 7],
     key=days_until,
 )
 for s in upcoming:
-    d = days_until(s)
+    d    = days_until(s)
     when = "today" if d == 0 else ("tomorrow" if d == 1 else f"in {d} days")
     st.markdown(
         f'<div class="renewal-alert">⚠️ <b>{s["name"]}</b> renews <b>{when}</b> '
@@ -253,16 +246,16 @@ for s in upcoming:
 
 # ── Stats ──────────────────────────────────────────────────────────────────────
 
-monthly = sum(to_monthly(s) for s in subs)
-yearly  = sum(to_yearly(s)  for s in subs)
+monthly      = sum(to_monthly(s) for s in subs)
+yearly       = sum(to_yearly(s)  for s in subs)
 active_count = sum(1 for s in subs if s.get("active", True))
 
 c1, c2, c3, c4 = st.columns(4)
 for col, label, value in [
-    (c1, "Monthly",      fmt(monthly)),
-    (c2, "Yearly",       fmt(yearly)),
+    (c1, "Monthly",       fmt(monthly)),
+    (c2, "Yearly",        fmt(yearly)),
     (c3, "Renewing soon", str(len(upcoming))),
-    (c4, "Active subs",  str(active_count)),
+    (c4, "Active",        str(active_count)),
 ]:
     col.markdown(
         f'<div class="stat-card"><div class="stat-label">{label}</div>'
@@ -272,26 +265,17 @@ for col, label, value in [
 
 st.write("")
 
-# ── Filter / sort bar ─────────────────────────────────────────────────────────
+# ── Filter / sort ──────────────────────────────────────────────────────────────
 
 fc, sc = st.columns([3, 2])
 with fc:
-    cat_filter = st.selectbox(
-        "Filter by category",
-        ["All"] + CATEGORIES,
-        label_visibility="collapsed",
-    )
+    cat_filter = st.selectbox("Filter", ["All"] + CATEGORIES, label_visibility="collapsed")
 with sc:
-    sort_by = st.selectbox(
-        "Sort by",
-        ["Renewal date", "Cost (high→low)", "Name"],
-        label_visibility="collapsed",
-    )
+    sort_by = st.selectbox("Sort", ["Renewal date", "Cost (high→low)", "Name"], label_visibility="collapsed")
 
 # ── Subscription list ──────────────────────────────────────────────────────────
 
 filtered = [s for s in subs if cat_filter == "All" or s["category"] == cat_filter]
-
 if sort_by == "Renewal date":
     filtered.sort(key=lambda s: s["next_renewal"])
 elif sort_by == "Cost (high→low)":
@@ -300,7 +284,7 @@ else:
     filtered.sort(key=lambda s: s["name"].lower())
 
 if not subs:
-    st.info("No subscriptions yet — hit **➕ Add** to track your first one.")
+    st.info("No subscriptions yet — tap **➕ Add** to track your first one.")
 elif not filtered:
     st.info("No subscriptions match this filter.")
 else:
@@ -309,29 +293,28 @@ else:
         status = "🟢 Active" if s.get("active", True) else "⏸️ Paused"
         mo_str = f"  ·  {fmt(to_monthly(s), s['currency'])}/mo" if s["billing_cycle"] != "monthly" else ""
         d      = days_until(s)
-        urg    = "🔴" if d < 0 else ("🔴" if d <= 3 else ("🟡" if d <= 7 else ""))
+        urg    = "🔴" if d <= 3 else ("🟡" if d <= 7 else "")
 
-        with st.container():
-            st.markdown(
-                f'<div class="sub-card">'
-                f'<span class="sub-name">{emoji} {s["name"]}</span>&nbsp;&nbsp;'
-                f'<span class="sub-meta">{s["category"]} · {status}</span><br>'
-                f'<span class="sub-cost">{fmt(s["cost"], s["currency"])}</span>'
-                f'<span class="sub-meta"> / {s["billing_cycle"]}{mo_str}</span><br>'
-                f'<span class="sub-meta">{urg} Renews {renewal_label(s)} '
-                f'({datetime.strptime(s["next_renewal"], "%Y-%m-%d").strftime("%b %d, %Y")})</span>'
-                + (f'<br><span class="sub-meta" style="opacity:.55">{s["notes"]}</span>' if s.get("notes") else "")
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-            ec, dc, _ = st.columns([1, 1, 4])
-            if ec.button("✏️ Edit", key=f"edit_{s['id']}", use_container_width=True):
-                st.session_state.edit_id   = s["id"]
-                st.session_state.show_form = False
-                st.rerun()
-            if dc.button("🗑️ Delete", key=f"del_{s['id']}", use_container_width=True):
-                st.session_state.delete_id = s["id"]
-                st.rerun()
+        st.markdown(
+            f'<div class="sub-card">'
+            f'<span class="sub-name">{emoji} {s["name"]}</span>&nbsp;&nbsp;'
+            f'<span class="sub-meta">{s["category"]} · {status}</span><br>'
+            f'<span class="sub-cost">{fmt(s["cost"], s["currency"])}</span>'
+            f'<span class="sub-meta"> / {s["billing_cycle"]}{mo_str}</span><br>'
+            f'<span class="sub-meta">{urg} Renews {renewal_label(s)} '
+            f'({datetime.strptime(s["next_renewal"], "%Y-%m-%d").strftime("%b %d, %Y")})</span>'
+            + (f'<br><span class="sub-meta" style="opacity:.5">{s["notes"]}</span>' if s.get("notes") else "")
+            + "</div>",
+            unsafe_allow_html=True,
+        )
+        ec, dc, _ = st.columns([1, 1, 4])
+        if ec.button("✏️ Edit", key=f"edit_{s['id']}", use_container_width=True):
+            st.session_state.edit_id   = s["id"]
+            st.session_state.show_form = False
+            st.rerun()
+        if dc.button("🗑️ Delete", key=f"del_{s['id']}", use_container_width=True):
+            st.session_state.delete_id = s["id"]
+            st.rerun()
 
 # ── Delete confirmation ────────────────────────────────────────────────────────
 
