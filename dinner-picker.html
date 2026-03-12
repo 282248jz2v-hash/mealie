@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Dinner Picker</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #f9f9f7;
+      --surface: #ffffff;
+      --border: #e0e0dc;
+      --text: #1a1a1a;
+      --muted: #888;
+      --accent: #2d6a4f;
+      --accent-light: #e8f5ee;
+      --danger: #c0392b;
+      --radius: 14px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: env(safe-area-inset-top, 16px) 20px env(safe-area-inset-bottom, 16px);
+      padding-top: max(env(safe-area-inset-top), 24px);
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      text-align: center;
+      color: var(--text);
+    }
+
+    /* ── Pick section ── */
+    .pick-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .result-box {
+      width: 100%;
+      min-height: 120px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .result-box.has-result {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .result-text {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      text-align: center;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .result-placeholder {
+      font-size: 1rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .pick-btn {
+      width: 100%;
+      padding: 22px 16px;
+      font-size: 1.3rem;
+      font-weight: 700;
+      font-family: var(--font);
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      letter-spacing: -0.01em;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    .pick-btn:active {
+      background: #235c42;
+      transform: scale(0.98);
+    }
+
+    /* ── Meal list section ── */
+    .list-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.8rem;
+    }
+
+    .meal-count {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .meal-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .meal-item {
+      display: flex;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+    }
+
+    .meal-item:last-child {
+      border-bottom: none;
+    }
+
+    .meal-item span {
+      flex: 1;
+      font-size: 1.05rem;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 1.3rem;
+      line-height: 1;
+      padding: 4px 6px;
+      border-radius: 6px;
+      -webkit-tap-highlight-color: transparent;
+      transition: color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .remove-btn:active {
+      color: var(--danger);
+    }
+
+    /* ── Add meal form ── */
+    .add-form {
+      display: flex;
+      gap: 10px;
+    }
+
+    .add-input {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 1rem;
+      font-family: var(--font);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      outline: none;
+      -webkit-appearance: none;
+      transition: border-color 0.15s;
+    }
+
+    .add-input:focus {
+      border-color: var(--accent);
+    }
+
+    .add-input::placeholder {
+      color: var(--muted);
+    }
+
+    .add-btn {
+      padding: 14px 20px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: var(--font);
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, transform 0.1s;
+      flex-shrink: 0;
+    }
+
+    .add-btn:active {
+      background: #235c42;
+      transform: scale(0.97);
+    }
+
+    .empty-state {
+      padding: 28px 16px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    /* ── Animation ── */
+    @keyframes pop-in {
+      0%   { transform: scale(0.85); opacity: 0; }
+      70%  { transform: scale(1.04); }
+      100% { transform: scale(1);    opacity: 1; }
+    }
+
+    .result-text.animate {
+      animation: pop-in 0.28s ease-out both;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>🍽 Dinner Picker</h1>
+
+    <div class="pick-section">
+      <div class="result-box" id="resultBox">
+        <p class="result-placeholder" id="placeholder">Tap the button to pick tonight's dinner</p>
+        <p class="result-text" id="resultText" style="display:none"></p>
+      </div>
+      <button class="pick-btn" id="pickBtn">Pick Dinner</button>
+    </div>
+
+    <div class="list-section">
+      <div class="list-header">
+        <span class="section-title">Meal List</span>
+        <span class="meal-count" id="mealCount"></span>
+      </div>
+
+      <div class="add-form">
+        <input
+          class="add-input"
+          id="addInput"
+          type="text"
+          placeholder="Add a meal…"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          enterkeyhint="done"
+        />
+        <button class="add-btn" id="addBtn">Add</button>
+      </div>
+
+      <div class="meal-list" id="mealList"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'dinner-picker-meals';
+
+    const DEFAULT_MEALS = [
+      'Tacos',
+      'Spaghetti',
+      'Chicken Fajitas',
+      'Pizza',
+      'Burgers',
+      'Breakfast for Dinner',
+      'Grilled Chicken Bowls',
+      'Leftovers',
+    ];
+
+    // ── State ──────────────────────────────────────────────────────────────
+    function loadMeals() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (_) {}
+      return [...DEFAULT_MEALS];
+    }
+
+    function saveMeals(meals) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(meals));
+      } catch (_) {}
+    }
+
+    let meals = loadMeals();
+
+    // ── Render ─────────────────────────────────────────────────────────────
+    function renderList() {
+      const list = document.getElementById('mealList');
+      const count = document.getElementById('mealCount');
+
+      count.textContent = `${meals.length} meal${meals.length !== 1 ? 's' : ''}`;
+
+      if (meals.length === 0) {
+        list.innerHTML = '<p class="empty-state">No meals yet — add one below</p>';
+        return;
+      }
+
+      list.innerHTML = meals.map((meal, i) => `
+        <div class="meal-item">
+          <span>${escapeHtml(meal)}</span>
+          <button class="remove-btn" aria-label="Remove ${escapeHtml(meal)}" onclick="removeMeal(${i})">×</button>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ── Actions ────────────────────────────────────────────────────────────
+    function pickDinner() {
+      if (meals.length === 0) {
+        alert('Add some meals to the list first!');
+        return;
+      }
+
+      const idx = Math.floor(Math.random() * meals.length);
+      const meal = meals[idx];
+
+      const box = document.getElementById('resultBox');
+      const placeholder = document.getElementById('placeholder');
+      const resultText = document.getElementById('resultText');
+
+      placeholder.style.display = 'none';
+      resultText.style.display = 'block';
+
+      // Re-trigger animation by replacing the element
+      const fresh = resultText.cloneNode(false);
+      fresh.id = 'resultText';
+      fresh.textContent = meal;
+      fresh.classList.add('animate');
+      resultText.replaceWith(fresh);
+
+      box.classList.add('has-result');
+    }
+
+    function addMeal() {
+      const input = document.getElementById('addInput');
+      const val = input.value.trim();
+      if (!val) return;
+
+      // Prevent duplicates (case-insensitive)
+      if (meals.some(m => m.toLowerCase() === val.toLowerCase())) {
+        input.value = '';
+        input.focus();
+        return;
+      }
+
+      meals.push(val);
+      saveMeals(meals);
+      renderList();
+      input.value = '';
+      input.focus();
+    }
+
+    function removeMeal(index) {
+      meals.splice(index, 1);
+      saveMeals(meals);
+      renderList();
+    }
+
+    // ── Events ─────────────────────────────────────────────────────────────
+    document.getElementById('pickBtn').addEventListener('click', pickDinner);
+    document.getElementById('addBtn').addEventListener('click', addMeal);
+    document.getElementById('addInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addMeal();
+    });
+
+    // ── Init ───────────────────────────────────────────────────────────────
+    renderList();
+  </script>
+</body>
+</html>
