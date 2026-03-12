@@ -2,6 +2,7 @@ import json
 import uuid
 from datetime import date, datetime, timedelta
 
+import requests
 import streamlit as st
 from streamlit_local_storage import LocalStorage
 
@@ -14,12 +15,60 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── Local-storage persistence ──────────────────────────────────────────────────
-# Data lives in the browser — survives refreshes, works on any device.
+# ── Storage ────────────────────────────────────────────────────────────────────
+# If GITHUB_TOKEN secret is set  → data lives in a private GitHub Gist
+#                                   (syncs across phone, laptop, etc.)
+# Otherwise                      → data lives in this browser only
 
+_GIST_FILENAME = "subscriptions_auditor.json"
 _ls = LocalStorage()
 
+def _github_headers() -> dict | None:
+    token = st.secrets.get("GITHUB_TOKEN", "")
+    if not token:
+        return None
+    return {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+
+def _find_gist_id(headers: dict) -> str | None:
+    """Return the ID of the existing Gist, or None if it doesn't exist yet."""
+    try:
+        r = requests.get("https://api.github.com/gists", headers=headers, timeout=8)
+        for gist in r.json():
+            if _GIST_FILENAME in gist.get("files", {}):
+                return gist["id"]
+    except Exception:
+        pass
+    return None
+
+def _create_gist(headers: dict, data: str) -> str | None:
+    """Create a new private Gist and return its ID."""
+    try:
+        r = requests.post(
+            "https://api.github.com/gists",
+            headers=headers,
+            json={
+                "description": "Subscription Auditor data",
+                "public": False,
+                "files": {_GIST_FILENAME: {"content": data}},
+            },
+            timeout=8,
+        )
+        return r.json().get("id")
+    except Exception:
+        return None
+
 def load() -> list[dict]:
+    headers = _github_headers()
+    if headers:
+        try:
+            gist_id = _find_gist_id(headers)
+            if gist_id:
+                r = requests.get(f"https://api.github.com/gists/{gist_id}", headers=headers, timeout=8)
+                content = r.json()["files"][_GIST_FILENAME]["content"]
+                return json.loads(content)
+            return []  # no gist yet, will be created on first save
+        except Exception:
+            pass  # fall through to localStorage
     raw = _ls.getItem("subscriptions")
     if not raw:
         return []
@@ -29,7 +78,28 @@ def load() -> list[dict]:
         return []
 
 def save(subs: list[dict]):
-    _ls.setItem("subscriptions", json.dumps(subs, default=str))
+    data = json.dumps(subs, default=str)
+    headers = _github_headers()
+    if headers:
+        try:
+            gist_id = st.session_state.get("_gist_id") or _find_gist_id(headers)
+            if gist_id:
+                requests.patch(
+                    f"https://api.github.com/gists/{gist_id}",
+                    headers=headers,
+                    json={"files": {_GIST_FILENAME: {"content": data}}},
+                    timeout=8,
+                )
+            else:
+                gist_id = _create_gist(headers, data)
+            st.session_state["_gist_id"] = gist_id
+            return
+        except Exception:
+            pass  # fall through to localStorage
+    _ls.setItem("subscriptions", data)
+
+def storage_mode() -> str:
+    return "🔄 Synced via GitHub Gist" if st.secrets.get("GITHUB_TOKEN") else "📱 This browser only"
 
 # ── Session state bootstrap ────────────────────────────────────────────────────
 
@@ -151,7 +221,7 @@ st.markdown("""
 col_title, col_btn = st.columns([4, 1])
 with col_title:
     st.markdown("## 🔔 Subscription Auditor")
-    st.caption("Track recurring costs · get alerted before renewals hit")
+    st.caption(storage_mode())
 with col_btn:
     st.write("")
     if st.button("➕ Add", use_container_width=True, type="primary"):
