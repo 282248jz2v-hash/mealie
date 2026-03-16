@@ -1,575 +1,326 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Dinner Picker</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg: #f9f9f7;
-      --surface: #ffffff;
-      --border: #e0e0dc;
-      --text: #1a1a1a;
-      --muted: #888;
-      --accent: #2d6a4f;
-      --accent-light: #e8f5ee;
-      --danger: #c0392b;
-      --radius: 14px;
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: max(env(safe-area-inset-top), 24px) 20px env(safe-area-inset-bottom, 24px);
-    }
-
-    .app {
-      width: 100%;
-      max-width: 480px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      text-align: center;
-    }
-
-    /* ── Cuisine filter ── */
-    .filter-scroll {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      margin: 0 -20px;
-      padding: 0 20px;
-    }
-    .filter-scroll::-webkit-scrollbar { display: none; }
-
-    .filter-row {
-      display: flex;
-      gap: 8px;
-      width: max-content;
-    }
-
-    .filter-chip {
-      padding: 8px 16px;
-      border-radius: 999px;
-      border: 1.5px solid var(--border);
-      background: var(--surface);
-      font-size: 0.9rem;
-      font-weight: 600;
-      font-family: var(--font);
-      color: var(--muted);
-      cursor: pointer;
-      white-space: nowrap;
-      -webkit-tap-highlight-color: transparent;
-      transition: all 0.15s;
-    }
-
-    .filter-chip.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-
-    /* ── Pick section ── */
-    .pick-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .result-box {
-      width: 100%;
-      min-height: 110px;
-      background: var(--surface);
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      transition: border-color 0.2s, background 0.2s;
-      gap: 6px;
-    }
-
-    .result-box.has-result {
-      border-color: var(--accent);
-      background: var(--accent-light);
-    }
-
-    .result-text {
-      font-size: 1.9rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      text-align: center;
-      color: var(--text);
-      line-height: 1.2;
-    }
-
-    .result-cuisine {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .result-placeholder {
-      font-size: 1rem;
-      color: var(--muted);
-      text-align: center;
-    }
-
-    .pick-btn {
-      width: 100%;
-      padding: 20px 16px;
-      font-size: 1.2rem;
-      font-weight: 700;
-      font-family: var(--font);
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: background 0.15s, transform 0.1s;
-      user-select: none;
-    }
-
-    .pick-btn:active { background: #235c42; transform: scale(0.98); }
-
-    /* ── List section ── */
-    .list-section { display: flex; flex-direction: column; gap: 12px; }
-
-    .list-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .section-title {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .meal-count { font-size: 0.8rem; color: var(--muted); }
-
-    .meal-list {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-
-    .meal-item {
-      display: flex;
-      align-items: center;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      gap: 10px;
-    }
-    .meal-item:last-child { border-bottom: none; }
-
-    .meal-info { flex: 1; min-width: 0; }
-
-    .meal-name {
-      font-size: 1rem;
-      font-weight: 500;
-      line-height: 1.3;
-    }
-
-    .meal-tag {
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .remove-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--muted);
-      font-size: 1.3rem;
-      line-height: 1;
-      padding: 4px 6px;
-      border-radius: 6px;
-      -webkit-tap-highlight-color: transparent;
-      transition: color 0.15s;
-      flex-shrink: 0;
-    }
-    .remove-btn:active { color: var(--danger); }
-
-    /* ── Add form ── */
-    .add-form { display: flex; gap: 10px; }
-
-    .add-input {
-      flex: 1;
-      padding: 13px 16px;
-      font-size: 1rem;
-      font-family: var(--font);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      color: var(--text);
-      outline: none;
-      -webkit-appearance: none;
-      transition: border-color 0.15s;
-    }
-    .add-input:focus { border-color: var(--accent); }
-    .add-input::placeholder { color: var(--muted); }
-
-    .cuisine-select {
-      padding: 13px 10px;
-      font-size: 0.9rem;
-      font-family: var(--font);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      color: var(--text);
-      outline: none;
-      cursor: pointer;
-      max-width: 110px;
-    }
-
-    .add-btn {
-      padding: 13px 20px;
-      font-size: 1rem;
-      font-weight: 700;
-      font-family: var(--font);
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: background 0.15s, transform 0.1s;
-      flex-shrink: 0;
-    }
-    .add-btn:active { background: #235c42; transform: scale(0.97); }
-
-    .empty-state {
-      padding: 28px 16px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    /* ── Import/Export ── */
-    .io-row { display: flex; gap: 10px; }
-
-    .io-btn {
-      flex: 1;
-      padding: 11px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      font-family: var(--font);
-      border-radius: var(--radius);
-      border: 1.5px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      cursor: pointer;
-      text-align: center;
-      -webkit-tap-highlight-color: transparent;
-      transition: all 0.15s;
-    }
-    .io-btn:active { background: var(--bg); }
-
-    /* ── Animation ── */
-    @keyframes pop-in {
-      0%   { transform: scale(0.85); opacity: 0; }
-      70%  { transform: scale(1.04); }
-      100% { transform: scale(1);    opacity: 1; }
-    }
-    .animate { animation: pop-in 0.28s ease-out both; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<title>Dinner Picker</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f5f0;--surface:#fff;--border:#e0e0dc;--text:#1a1a1a;--muted:#888;
+  --accent:#2d6a4f;--accent-light:#e8f5ee;--accent-dark:#235c42;
+  --danger:#c0392b;--radius:14px;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;
+  display:flex;flex-direction:column;align-items:center;
+  padding:max(env(safe-area-inset-top),16px) 0 max(env(safe-area-inset-bottom),24px);}
+.app{width:100%;max-width:480px;display:flex;flex-direction:column;gap:0;}
+/* ── Header ── */
+.header{padding:16px 20px 0;display:flex;flex-direction:column;gap:12px;}
+.header h1{font-size:1.4rem;font-weight:800;letter-spacing:-.03em;text-align:center;color:var(--accent);}
+/* ── Tabs ── */
+.tab-bar{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.tab-btn{flex:1;padding:14px 4px;font-size:.78rem;font-weight:700;font-family:var(--font);
+  background:none;border:none;cursor:pointer;color:var(--muted);
+  border-bottom:3px solid transparent;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+/* ── Tab panels ── */
+.tab-panel{display:none;padding:16px 16px 80px;flex-direction:column;gap:16px;}
+.tab-panel.active{display:flex;}
+/* ── Filter chips ── */
+.filter-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -16px;padding:0 16px;}
+.filter-scroll::-webkit-scrollbar{display:none;}
+.filter-row{display:flex;gap:8px;width:max-content;}
+.chip{padding:8px 14px;border-radius:999px;border:1.5px solid var(--border);background:var(--surface);
+  font-size:.82rem;font-weight:600;font-family:var(--font);color:var(--muted);cursor:pointer;
+  white-space:nowrap;-webkit-tap-highlight-color:transparent;transition:all .15s;}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+/* ── Cards ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+/* ── Pick result ── */
+.result-box{width:100%;min-height:120px;background:var(--surface);border:2px solid var(--border);
+  border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:20px;transition:border-color .2s,background .2s;gap:6px;}
+.result-box.has-result{border-color:var(--accent);background:var(--accent-light);}
+.result-name{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;text-align:center;line-height:1.2;}
+.result-cuisine-tag{font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;}
+.result-placeholder{font-size:1rem;color:var(--muted);text-align:center;}
+.result-actions{display:flex;gap:10px;align-items:center;}
+/* ── Buttons ── */
+.btn-primary{width:100%;padding:18px 16px;font-size:1.1rem;font-weight:800;font-family:var(--font);
+  background:var(--accent);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:background .15s,transform .1s;user-select:none;}
+.btn-primary:active{background:var(--accent-dark);transform:scale(.98);}
+.btn-secondary{padding:12px 20px;font-size:.9rem;font-weight:700;font-family:var(--font);
+  background:var(--surface);color:var(--accent);border:2px solid var(--accent);
+  border-radius:var(--radius);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s;}
+.btn-secondary:active{background:var(--accent-light);}
+.btn-ghost{background:none;border:none;cursor:pointer;font-family:var(--font);
+  -webkit-tap-highlight-color:transparent;transition:all .15s;}
+/* ── Like/Dislike ── */
+.vote-btn{padding:8px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);
+  font-size:.9rem;font-weight:600;font-family:var(--font);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:all .15s;display:flex;align-items:center;gap:5px;}
+.vote-btn.liked{background:#e8f5ee;border-color:var(--accent);color:var(--accent);}
+.vote-btn.disliked{background:#fdecea;border-color:var(--danger);color:var(--danger);}
+/* ── Recent picks ── */
+.picks-list{display:flex;flex-direction:column;gap:0;}
+.pick-item{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.pick-item:last-child{border-bottom:none;}
+.pick-item-name{font-size:.95rem;font-weight:600;}
+.pick-item-time{font-size:.75rem;color:var(--muted);}
+/* ── Meal list ── */
+.meal-item{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);gap:10px;}
+.meal-item:last-child{border-bottom:none;}
+.meal-info{flex:1;min-width:0;}
+.meal-item-name{font-size:.95rem;font-weight:600;line-height:1.3;cursor:pointer;color:var(--accent);}
+.meal-item-name:hover{text-decoration:underline;}
+.meal-item-tag{font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.meal-votes{display:flex;gap:4px;align-items:center;}
+.small-vote{padding:5px 9px;border-radius:8px;border:1px solid var(--border);background:var(--surface);
+  font-size:.75rem;font-weight:700;font-family:var(--font);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:all .15s;}
+.small-vote.liked{background:#e8f5ee;border-color:var(--accent);color:var(--accent);}
+.small-vote.disliked{background:#fdecea;border-color:var(--danger);color:var(--danger);}
+.icon-btn{padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);
+  font-size:.8rem;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s;flex-shrink:0;}
+.icon-btn:active{background:var(--bg);}
+/* ── Section header ── */
+.section-hdr{display:flex;align-items:center;justify-content:space-between;}
+.section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+/* ── Weekly planner ── */
+.week-grid{display:flex;flex-direction:column;gap:8px;}
+.day-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s;}
+.day-row:active{background:var(--bg);}
+.day-label{font-size:.8rem;font-weight:700;color:var(--muted);width:36px;flex-shrink:0;text-transform:uppercase;}
+.day-meal{flex:1;font-size:.95rem;font-weight:600;}
+.day-meal.empty{color:var(--muted);font-weight:400;}
+.day-clear{padding:4px 8px;background:none;border:none;font-size:1rem;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;color:var(--muted);flex-shrink:0;}
+/* ── Shopping list ── */
+.shop-group{margin-bottom:12px;}
+.shop-group-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:6px;padding:0 2px;}
+.shop-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.shop-item:last-child{border-bottom:none;}
+.shop-check{width:20px;height:20px;border-radius:6px;border:2px solid var(--border);
+  flex-shrink:0;margin-top:1px;cursor:pointer;appearance:none;-webkit-appearance:none;background:var(--surface);}
+.shop-check:checked{background:var(--accent);border-color:var(--accent);}
+.shop-check:checked::after{content:"✓";color:#fff;font-size:.7rem;display:flex;align-items:center;justify-content:center;height:100%;}
+.shop-text{font-size:.92rem;line-height:1.4;}
+/* ── IO row ── */
+.io-row{display:flex;gap:10px;}
+.io-btn{flex:1;padding:12px;font-size:.82rem;font-weight:700;font-family:var(--font);
+  border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface);
+  color:var(--text);cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;transition:all .15s;}
+.io-btn:active{background:var(--bg);}
+/* ── Modals ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-backdrop.open{opacity:1;pointer-events:all;}
+.modal-sheet{background:var(--surface);border-radius:20px 20px 0 0;
+  width:100%;max-width:480px;max-height:92dvh;display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.65,1);}
+.modal-backdrop.open .modal-sheet{transform:translateY(0);}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;}
+.modal-header{padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);}
+.modal-title{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;}
+.modal-close{padding:6px;border-radius:8px;border:none;background:none;font-size:1.3rem;
+  cursor:pointer;color:var(--muted);-webkit-tap-highlight-color:transparent;}
+.modal-body{padding:16px 20px;overflow-y:auto;flex:1;}
+.modal-footer{padding:12px 20px max(env(safe-area-inset-bottom),12px);border-top:1px solid var(--border);display:flex;gap:10px;}
+/* ── Servings toggle ── */
+.servings-row{display:flex;gap:8px;margin-bottom:16px;}
+.srv-btn{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);
+  font-size:.9rem;font-weight:700;font-family:var(--font);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:all .15s;text-align:center;}
+.srv-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+/* ── Recipe ── */
+.recipe-section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.06em;margin:14px 0 8px;}
+.ingredient-list{list-style:none;display:flex;flex-direction:column;gap:4px;}
+.ingredient-list li{font-size:.92rem;padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;}
+.ingredient-list li:last-child{border-bottom:none;}
+.ing-qty{font-weight:700;color:var(--accent);min-width:60px;flex-shrink:0;}
+.steps-list{list-style:none;display:flex;flex-direction:column;gap:10px;}
+.steps-list li{font-size:.9rem;line-height:1.5;display:flex;gap:10px;}
+.step-num{font-weight:800;color:var(--accent);min-width:22px;flex-shrink:0;}
+/* ── Edit modal ── */
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.form-label{font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.form-input{padding:12px 14px;font-size:1rem;font-family:var(--font);background:var(--surface);
+  border:1.5px solid var(--border);border-radius:10px;color:var(--text);outline:none;
+  -webkit-appearance:none;transition:border-color .15s;}
+.form-input:focus{border-color:var(--accent);}
+textarea.form-input{resize:vertical;min-height:80px;line-height:1.5;}
+select.form-input{cursor:pointer;}
+/* ── Meal picker modal ── */
+.meal-picker-list{display:flex;flex-direction:column;gap:0;}
+.mp-item{padding:13px 4px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+  gap:10px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s;}
+.mp-item:last-child{border-bottom:none;}
+.mp-item:active{background:var(--bg);}
+.mp-item-name{flex:1;font-size:.95rem;font-weight:600;}
+.mp-item-tag{font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;}
+/* ── Empty state ── */
+.empty-state{padding:32px 16px;text-align:center;color:var(--muted);font-size:.9rem;}
+/* ── Animations ── */
+@keyframes pop-in{0%{transform:scale(.85);opacity:0}70%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+.animate{animation:pop-in .28s ease-out both;}
+@keyframes fade-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fade-in .2s ease-out both;}
+/* ── Notes badge ── */
+.notes-badge{display:inline-block;background:#fff3cd;border:1px solid #ffc107;color:#856404;
+  font-size:.65rem;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;vertical-align:middle;}
+</style>
 </head>
 <body>
 <div class="app">
-  <h1>🍽 Dinner Picker</h1>
-
-  <!-- Cuisine filter chips -->
-  <div class="filter-scroll">
-    <div class="filter-row" id="filterRow"></div>
+  <div class="header">
+    <h1>Dinner Picker</h1>
+    <div class="filter-scroll"><div class="filter-row" id="filterRow"></div></div>
   </div>
 
-  <!-- Pick -->
-  <div class="pick-section">
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('pick')" id="tab-pick">Pick</button>
+    <button class="tab-btn" onclick="switchTab('meals')" id="tab-meals">Meals</button>
+    <button class="tab-btn" onclick="switchTab('planner')" id="tab-planner">Planner</button>
+  </div>
+
+  <!-- PICK TAB -->
+  <div class="tab-panel active" id="panel-pick">
     <div class="result-box" id="resultBox">
-      <p class="result-placeholder" id="placeholder">Tap the button to pick tonight's dinner</p>
-      <p class="result-text" id="resultText" style="display:none"></p>
-      <p class="result-cuisine" id="resultCuisine" style="display:none"></p>
+      <p class="result-placeholder" id="resultPlaceholder">Tap "Pick Dinner" to get a suggestion</p>
+      <p class="result-name" id="resultName" style="display:none"></p>
+      <p class="result-cuisine-tag" id="resultCuisineTag" style="display:none"></p>
+      <div class="result-actions" id="resultActions" style="display:none">
+        <button class="vote-btn" id="pickLikeBtn" onclick="voteCurrentPick(1)">👍 Like</button>
+        <button class="vote-btn" id="pickDislikeBtn" onclick="voteCurrentPick(-1)">👎</button>
+        <button class="btn-ghost icon-btn" id="viewRecipeBtn" onclick="openRecipeModal()">📖</button>
+      </div>
     </div>
-    <button class="pick-btn" id="pickBtn">Pick Dinner</button>
+    <button class="btn-primary" id="pickBtn" onclick="pickDinner()">Pick Dinner</button>
+    <button class="btn-secondary" id="notTonightBtn" onclick="notTonight()" style="display:none">Not Tonight — Try Again</button>
+
+    <div id="recentSection" style="display:none">
+      <div class="section-hdr" style="margin-bottom:8px;">
+        <span class="section-title">Recent Picks</span>
+        <button class="btn-ghost" style="font-size:.8rem;color:var(--muted)" onclick="clearHistory()">Clear</button>
+      </div>
+      <div class="card picks-list" id="recentList"></div>
+    </div>
   </div>
 
-  <!-- Meal list -->
-  <div class="list-section">
-    <div class="list-header">
-      <span class="section-title">Meal List</span>
-      <span class="meal-count" id="mealCount"></span>
+  <!-- MEALS TAB -->
+  <div class="tab-panel" id="panel-meals">
+    <div class="filter-scroll"><div class="filter-row" id="filterRow2"></div></div>
+    <div class="section-hdr">
+      <span class="section-title">All Meals</span>
+      <span class="section-title" id="mealCount"></span>
     </div>
-
-    <div class="add-form">
-      <input class="add-input" id="addInput" type="text" placeholder="Meal name…"
-        autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" />
-      <select class="cuisine-select" id="cuisineSelect"></select>
-      <button class="add-btn" id="addBtn">Add</button>
-    </div>
-
-    <div class="meal-list" id="mealList"></div>
-
+    <div class="card" id="mealList"></div>
     <div class="io-row">
-      <button class="io-btn" id="exportBtn">⬇ Export JSON</button>
-      <button class="io-btn" id="importBtn">⬆ Import JSON</button>
-      <input type="file" id="importFile" accept=".json" style="display:none" />
+      <button class="io-btn" onclick="exportData()">Export JSON</button>
+      <button class="io-btn" onclick="document.getElementById('importFile').click()">Import JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)"/>
+    </div>
+  </div>
+
+  <!-- PLANNER TAB -->
+  <div class="tab-panel" id="panel-planner">
+    <div class="section-hdr">
+      <span class="section-title">Weekly Planner</span>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+    <button class="btn-primary" onclick="openShoppingList()">Generate Shopping List</button>
+  </div>
+</div>
+
+<!-- RECIPE MODAL -->
+<div class="modal-backdrop" id="recipeModal" onclick="handleModalBackdrop(event,'recipeModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="recipeModalTitle"></span>
+      <button class="modal-close" onclick="closeModal('recipeModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="servings-row">
+        <button class="srv-btn" onclick="setServings(2)">2 servings</button>
+        <button class="srv-btn active" onclick="setServings(4)">4 servings</button>
+        <button class="srv-btn" onclick="setServings(6)">6 servings</button>
+      </div>
+      <p class="recipe-section-title">Ingredients</p>
+      <ul class="ingredient-list" id="recipeIngredients"></ul>
+      <p class="recipe-section-title">Steps</p>
+      <ol class="steps-list" id="recipeSteps"></ol>
     </div>
   </div>
 </div>
 
-<script>
-  const STORAGE_KEY = 'dinner-picker-meals-v2';
-  const CUISINES = ['American', 'Mexican', 'Italian', 'Asian', 'Comfort'];
+<!-- EDIT MODAL -->
+<div class="modal-backdrop" id="editModal" onclick="handleModalBackdrop(event,'editModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">Edit Meal</span>
+      <button class="modal-close" onclick="closeModal('editModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Meal Name</label>
+        <input class="form-input" id="editName" type="text"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cuisine</label>
+        <select class="form-input" id="editCuisine"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Personal Notes</label>
+        <textarea class="form-input" id="editNotes" placeholder="e.g. double the garlic, use panko breadcrumbs…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('editModal')" style="flex:1">Cancel</button>
+      <button class="btn-primary" onclick="saveEdit()" style="flex:2">Save</button>
+    </div>
+  </div>
+</div>
 
-  const DEFAULT_MEALS = [
-    // American
-    { name: 'Burgers',                    cuisine: 'American' },
-    { name: 'BBQ Ribs',                   cuisine: 'American' },
-    { name: 'Fried Chicken',              cuisine: 'American' },
-    { name: 'Meatloaf',                   cuisine: 'American' },
-    { name: 'Pot Roast',                  cuisine: 'American' },
-    { name: 'Grilled Steak',              cuisine: 'American' },
-    { name: 'Chili',                      cuisine: 'American' },
-    { name: 'Pulled Pork Sandwiches',     cuisine: 'American' },
-    { name: 'Sloppy Joes',                cuisine: 'American' },
-    { name: 'Breakfast for Dinner',       cuisine: 'American' },
-    // Mexican
-    { name: 'Tacos',                      cuisine: 'Mexican' },
-    { name: 'Chicken Fajitas',            cuisine: 'Mexican' },
-    { name: 'Beef Burritos',              cuisine: 'Mexican' },
-    { name: 'Enchiladas',                 cuisine: 'Mexican' },
-    { name: 'Quesadillas',                cuisine: 'Mexican' },
-    { name: 'Taco Salad',                 cuisine: 'Mexican' },
-    { name: 'Carne Asada',                cuisine: 'Mexican' },
-    { name: 'Chile Verde',                cuisine: 'Mexican' },
-    { name: 'Tamales',                    cuisine: 'Mexican' },
-    { name: 'Carnitas Bowls',             cuisine: 'Mexican' },
-    // Italian
-    { name: 'Spaghetti & Meatballs',      cuisine: 'Italian' },
-    { name: 'Lasagna',                    cuisine: 'Italian' },
-    { name: 'Chicken Parmesan',           cuisine: 'Italian' },
-    { name: 'Chicken Alfredo',            cuisine: 'Italian' },
-    { name: 'Pizza',                      cuisine: 'Italian' },
-    { name: 'Baked Ziti',                 cuisine: 'Italian' },
-    { name: 'Chicken Piccata',            cuisine: 'Italian' },
-    { name: 'Meatball Subs',              cuisine: 'Italian' },
-    { name: 'Chicken Marsala',            cuisine: 'Italian' },
-    { name: 'Sausage & Peppers',          cuisine: 'Italian' },
-    // Asian
-    { name: 'Beef Stir Fry',              cuisine: 'Asian' },
-    { name: 'Orange Chicken',             cuisine: 'Asian' },
-    { name: 'Chicken Fried Rice',         cuisine: 'Asian' },
-    { name: 'Beef & Broccoli',            cuisine: 'Asian' },
-    { name: "General Tso's Chicken",      cuisine: 'Asian' },
-    { name: 'Teriyaki Chicken Bowls',     cuisine: 'Asian' },
-    { name: 'Honey Garlic Chicken',       cuisine: 'Asian' },
-    { name: 'Mongolian Beef',             cuisine: 'Asian' },
-    { name: 'Kung Pao Chicken',           cuisine: 'Asian' },
-    { name: 'Sweet & Sour Pork',          cuisine: 'Asian' },
-    // Comfort
-    { name: 'Mac & Cheese with Bacon',    cuisine: 'Comfort' },
-    { name: 'Chicken Noodle Soup',        cuisine: 'Comfort' },
-    { name: 'Beef Stew',                  cuisine: 'Comfort' },
-    { name: 'Pork Chops',                 cuisine: 'Comfort' },
-    { name: 'Chicken & Rice Casserole',   cuisine: 'Comfort' },
-    { name: 'Chicken Pot Pie',            cuisine: 'Comfort' },
-    { name: 'Philly Cheesesteak',         cuisine: 'Comfort' },
-    { name: 'French Dip Sandwich',        cuisine: 'Comfort' },
-    { name: 'Chicken Tenders',            cuisine: 'Comfort' },
-    { name: 'Chorizo Breakfast Burritos', cuisine: 'Comfort' },
-  ];
+<!-- MEAL PICKER MODAL (for planner) -->
+<div class="modal-backdrop" id="mealPickerModal" onclick="handleModalBackdrop(event,'mealPickerModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="mealPickerTitle">Choose a Meal</span>
+      <button class="modal-close" onclick="closeModal('mealPickerModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="filter-scroll" style="margin:0 -20px;padding:0 20px 12px;">
+        <div class="filter-row" id="filterRow3"></div>
+      </div>
+      <div class="meal-picker-list" id="mealPickerList"></div>
+    </div>
+  </div>
+</div>
 
-  // ── State ──────────────────────────────────────────────────────────────
-  function loadMeals() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (_) {}
-    return DEFAULT_MEALS.map(m => ({ ...m }));
-  }
-
-  function saveMeals() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(meals)); } catch (_) {}
-  }
-
-  let meals = loadMeals();
-  let activeFilter = 'All';
-
-  function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function filteredMeals() {
-    return activeFilter === 'All' ? meals : meals.filter(m => m.cuisine === activeFilter);
-  }
-
-  // ── Render ─────────────────────────────────────────────────────────────
-  function renderFilters() {
-    const row = document.getElementById('filterRow');
-    row.innerHTML = ['All', ...CUISINES].map(c => `
-      <button class="filter-chip${c === activeFilter ? ' active' : ''}" onclick="setFilter('${c}')">${c}</button>
-    `).join('');
-  }
-
-  function renderCuisineSelect() {
-    const sel = document.getElementById('cuisineSelect');
-    sel.innerHTML = CUISINES.map(c => `<option value="${c}">${c}</option>`).join('');
-  }
-
-  function renderList() {
-    const list = document.getElementById('mealList');
-    const count = document.getElementById('mealCount');
-    const visible = filteredMeals();
-
-    count.textContent = `${visible.length} meal${visible.length !== 1 ? 's' : ''}`;
-
-    if (visible.length === 0) {
-      list.innerHTML = '<p class="empty-state">No meals in this category</p>';
-      return;
-    }
-
-    list.innerHTML = visible.map(meal => {
-      const idx = meals.indexOf(meal);
-      return `
-        <div class="meal-item">
-          <div class="meal-info">
-            <div class="meal-name">${escapeHtml(meal.name)}</div>
-            <div class="meal-tag">${escapeHtml(meal.cuisine)}</div>
-          </div>
-          <button class="remove-btn" aria-label="Remove" onclick="removeMeal(${idx})">×</button>
-        </div>`;
-    }).join('');
-  }
-
-  // ── Actions ────────────────────────────────────────────────────────────
-  function setFilter(cuisine) {
-    activeFilter = cuisine;
-    renderFilters();
-    renderList();
-  }
-
-  function pickDinner() {
-    const pool = filteredMeals();
-    if (pool.length === 0) { alert('No meals in this category!'); return; }
-
-    const meal = pool[Math.floor(Math.random() * pool.length)];
-    const box = document.getElementById('resultBox');
-    const placeholder = document.getElementById('placeholder');
-    const oldText = document.getElementById('resultText');
-    const cuisineEl = document.getElementById('resultCuisine');
-
-    placeholder.style.display = 'none';
-
-    const freshText = oldText.cloneNode(false);
-    freshText.id = 'resultText';
-    freshText.textContent = meal.name;
-    freshText.classList.add('animate');
-    freshText.style.display = 'block';
-    oldText.replaceWith(freshText);
-
-    cuisineEl.textContent = meal.cuisine;
-    cuisineEl.style.display = 'block';
-    box.classList.add('has-result');
-  }
-
-  function addMeal() {
-    const input = document.getElementById('addInput');
-    const sel = document.getElementById('cuisineSelect');
-    const name = input.value.trim();
-    if (!name) return;
-
-    if (meals.some(m => m.name.toLowerCase() === name.toLowerCase())) {
-      input.value = ''; input.focus(); return;
-    }
-
-    meals.push({ name, cuisine: sel.value });
-    saveMeals();
-    renderList();
-    input.value = '';
-    input.focus();
-  }
-
-  function removeMeal(index) {
-    meals.splice(index, 1);
-    saveMeals();
-    renderList();
-  }
-
-  function exportMeals() {
-    const blob = new Blob([JSON.stringify(meals, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'dinner-meals.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function importMeals(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = evt => {
-      try {
-        const parsed = JSON.parse(evt.target.result);
-        if (!Array.isArray(parsed)) throw new Error();
-        meals = parsed.map(m => typeof m === 'string'
-          ? { name: m, cuisine: 'American' }
-          : { name: String(m.name || ''), cuisine: String(m.cuisine || 'American') }
-        ).filter(m => m.name);
-        saveMeals();
-        renderList();
-      } catch (_) { alert('Invalid JSON file.'); }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  }
-
-  // ── Events ─────────────────────────────────────────────────────────────
-  document.getElementById('pickBtn').addEventListener('click', pickDinner);
-  document.getElementById('addBtn').addEventListener('click', addMeal);
-  document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addMeal(); });
-  document.getElementById('exportBtn').addEventListener('click', exportMeals);
-  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
-  document.getElementById('importFile').addEventListener('change', importMeals);
-
-  // ── Init ───────────────────────────────────────────────────────────────
-  renderFilters();
-  renderCuisineSelect();
-  renderList();
-</script>
-</body>
-</html>
+<!-- SHOPPING LIST MODAL -->
+<div class="modal-backdrop" id="shopModal" onclick="handleModalBackdrop(event,'shopModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">Shopping List</span>
+      <button class="modal-close" onclick="closeModal('shopModal')">×</button>
+    </div>
+    <div class="modal-body" id="shopModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="copyShoppingList()" style="flex:1">Copy</button>
+      <button class="btn-primary" onclick="window.print()" style="flex:1">Print</button>
+    </div>
+  </div>
+</div>
