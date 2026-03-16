@@ -1483,6 +1483,20 @@ function loadFromStorage() {
     if (Array.isArray(d.history)) state.history = d.history;
     if (d.planner && typeof d.planner === 'object') state.planner = d.planner;
   } catch(e) { console.warn('Failed to load state', e); }
+
+  // Merge: add any DEFAULT_MEALS not yet in the saved list (by id), and
+  // backfill kidFriendly on any existing meal that matches a default.
+  const savedIds = new Set(state.meals.map(m => m.id));
+  for (const def of DEFAULT_MEALS) {
+    if (!savedIds.has(def.id)) {
+      state.meals.push(def);
+    } else {
+      const saved = state.meals.find(m => m.id === def.id);
+      if (saved && saved.kidFriendly === undefined && def.kidFriendly) {
+        saved.kidFriendly = true;
+      }
+    }
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────
