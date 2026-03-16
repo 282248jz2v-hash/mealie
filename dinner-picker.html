@@ -111,6 +111,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .shop-check:checked{background:var(--accent);border-color:var(--accent);}
 .shop-check:checked::after{content:"✓";color:#fff;font-size:.7rem;display:flex;align-items:center;justify-content:center;height:100%;}
 .shop-text{font-size:.92rem;line-height:1.4;}
+/* ── Print ── */
+@media print {
+  body { background:#fff; }
+  .app > *:not(#shopModal) { display:none !important; }
+  #shopModal { position:static !important; display:block !important; opacity:1 !important; pointer-events:auto; }
+  #shopModal .modal-sheet { transform:none !important; max-height:none !important; border-radius:0; box-shadow:none; width:100%; }
+  #shopModal .modal-handle, #shopModal .modal-footer { display:none !important; }
+  #shopModal .modal-body { overflow:visible; }
+  .shop-check { -webkit-appearance:auto !important; appearance:auto !important; }
+  .shop-check::after { display:none !important; }
+  .shop-item { break-inside:avoid; }
+  .shop-group { break-inside:avoid; }
+}
 /* ── IO row ── */
 .io-row{display:flex;gap:10px;}
 .io-btn{flex:1;padding:12px;font-size:.82rem;font-weight:700;font-family:var(--font);
@@ -1598,51 +1611,99 @@ function assignMeal(mealId) {
 }
 
 // ── Shopping list ─────────────────────────────────────────
-function openShoppingList() {
+const SHOP_CATEGORY_ORDER = [
+  'Produce','Meat & Seafood','Dairy & Eggs','Bread & Bakery',
+  'Pasta, Rice & Grains','Canned & Pantry','Sauces & Condiments',
+  'Oils & Sweeteners','Spices & Seasonings','Other',
+];
+
+function shopCategory(item) {
+  const s = item.toLowerCase();
+  const m = p => new RegExp(p,'i').test(s);
+  if (m('\\b(chicken|beef|pork|ham|shrimp|prawn|salmon|tuna|steak|rib|sausage|ground|mince|clam|crab|turkey|lamb|bacon|anchovy)\\b')) return 'Meat & Seafood';
+  if (m('\\b(cheese|cheddar|mozzarella|parmesan|feta|paneer|ricotta|cream cheese|heavy cream|sour cream|butter|milk|yogurt|egg)\\b')) return 'Dairy & Eggs';
+  if (m('\\b(bread|bun|roll|pita|naan|wrap|phyllo|panko|breadcrumb|dough|tortilla)\\b')) return 'Bread & Bakery';
+  if (m('\\b(pasta|spaghetti|noodle|rice|lasagna|macaroni|penne|fettuccine|lo mein|gnocchi|ramen|dumpling|gyoza|wrapper)\\b')) return 'Pasta, Rice & Grains';
+  if (m('\\b(broth|stock|tomato sauce|passata|crushed tomato|diced tomato|tomato paste|coconut milk|black bean|kidney bean|chickpea|lentil|refried|canned)\\b|\\bcan\\b')) return 'Canned & Pantry';
+  if (m('\\b(soy sauce|oyster sauce|hoisin|fish sauce|worcestershire|ketchup|mustard|mayo|hot sauce|bbq|sriracha|salsa|vinegar|orange juice|mirin|sake)\\b')) return 'Sauces & Condiments';
+  if (m('\\b(garlic|onion|shallot|tomato|bell pepper|pepper|carrot|celery|broccoli|spinach|scallion|green onion|ginger|lime|lemon|avocado|cabbage|lettuce|cilantro|basil|parsley|herb|mushroom|zucchini|potato|cauliflower|corn|jalap|bean sprout|snow pea|cucumber|kale|leek|apple|orange)\\b')) return 'Produce';
+  if (m('\\b(oil|ghee|lard|sugar|brown sugar|honey|maple|molasses)\\b')) return 'Oils & Sweeteners';
+  if (m('\\b(salt|cumin|paprika|oregano|thyme|rosemary|chili|cayenne|cinnamon|nutmeg|cornstarch|starch|flour|baking|vanilla|sesame seed|red pepper|seasoning|spice|powder|dried|flake)\\b')) return 'Spices & Seasonings';
+  return 'Other';
+}
+
+function buildShopGroups() {
   const meals = DAYS
-    .map(d => state.planner[d])
-    .filter(Boolean)
-    .map(id => state.meals.find(m => m.id === id))
-    .filter(Boolean);
+    .map(d => state.planner[d]).filter(Boolean)
+    .map(id => state.meals.find(m => m.id === id)).filter(Boolean);
+  if (!meals.length) return null;
 
-  if (!meals.length) { alert('Add meals to your planner first!'); return; }
+  const merged = {};
+  for (const meal of meals) {
+    for (const ing of (meal.ingredients || [])) {
+      const normItem = ing.item.toLowerCase().split(',')[0].trim();
+      const key = normItem + '|' + (ing.unit || '');
+      if (merged[key]) {
+        if (ing.qty) merged[key].qty = (merged[key].qty || 0) + ing.qty;
+        if (!merged[key].meals.includes(meal.name)) merged[key].meals.push(meal.name);
+      } else {
+        merged[key] = { item: normItem, qty: ing.qty || 0, unit: ing.unit || '', meals: [meal.name], category: shopCategory(normItem) };
+      }
+    }
+  }
 
-  document.getElementById('shopModalBody').innerHTML = meals.map(meal => {
-    if (!meal.ingredients?.length) return `<div class="shop-group"><div class="shop-group-title">${esc(meal.name)}</div><p style="color:var(--muted);font-size:.85rem;padding:4px 0">No ingredients listed.</p></div>`;
-    return `<div class="shop-group">
-      <div class="shop-group-title">${esc(meal.name)}</div>
-      ${meal.ingredients.map((ing, i) => {
-        let label = ing.item;
-        if (ing.qty) {
-          const fmt = Number.isInteger(ing.qty) ? String(ing.qty) : ing.qty.toFixed(1);
-          label = `${fmt}${ing.unit ? ' ' + ing.unit : ''} ${label}`;
-        }
+  const groups = {};
+  for (const entry of Object.values(merged)) {
+    if (!groups[entry.category]) groups[entry.category] = [];
+    groups[entry.category].push(entry);
+  }
+  for (const cat of Object.keys(groups)) groups[cat].sort((a,b) => a.item.localeCompare(b.item));
+  return groups;
+}
+
+function fmtQty(entry) {
+  if (!entry.qty) return '';
+  const n = Number.isInteger(entry.qty) ? entry.qty : entry.qty.toFixed(1);
+  return n + (entry.unit ? ' ' + entry.unit + ' ' : ' ');
+}
+
+function openShoppingList() {
+  const groups = buildShopGroups();
+  if (!groups) { alert('Add meals to your planner first!'); return; }
+
+  let html = '';
+  let idx = 0;
+  for (const cat of SHOP_CATEGORY_ORDER) {
+    const items = groups[cat];
+    if (!items?.length) continue;
+    html += `<div class="shop-group">
+      <div class="shop-group-title">${esc(cat)}</div>
+      ${items.map(entry => {
+        const label = fmtQty(entry) + entry.item;
         return `<div class="shop-item">
-          <input type="checkbox" class="shop-check" id="sc-${meal.id}-${i}"/>
-          <label class="shop-text" for="sc-${meal.id}-${i}">${esc(label)}</label>
+          <input type="checkbox" class="shop-check" id="sc-${idx}"/>
+          <label class="shop-text" for="sc-${idx++}">${esc(label)}</label>
         </div>`;
       }).join('')}
     </div>`;
-  }).join('');
+  }
 
+  document.getElementById('shopModalBody').innerHTML = html;
   openModal('shopModal');
 }
 
 function copyShoppingList() {
-  const meals = DAYS
-    .map(d => state.planner[d])
-    .filter(Boolean)
-    .map(id => state.meals.find(m => m.id === id))
-    .filter(Boolean);
+  const groups = buildShopGroups();
+  if (!groups) { alert('Add meals to your planner first!'); return; }
 
-  const lines = meals.flatMap(meal => {
-    const header = `\n${meal.name}:`;
-    if (!meal.ingredients?.length) return [header, '  (no ingredients)'];
-    return [header, ...meal.ingredients.map(ing => {
-      const fmt = ing.qty ? `${ing.qty}${ing.unit ? ' ' + ing.unit : ''} ` : '';
-      return `  • ${fmt}${ing.item}`;
-    })];
-  });
+  const lines = ['SHOPPING LIST', ''];
+  for (const cat of SHOP_CATEGORY_ORDER) {
+    const items = groups[cat];
+    if (!items?.length) continue;
+    lines.push(cat.toUpperCase());
+    items.forEach(e => lines.push(`  ☐ ${fmtQty(e)}${e.item}`));
+    lines.push('');
+  }
 
   navigator.clipboard?.writeText(lines.join('\n').trim())
     .then(() => alert('Copied to clipboard!'))
