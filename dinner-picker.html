@@ -177,6 +177,13 @@ select.form-input{cursor:pointer;}
 /* ── Notes badge ── */
 .notes-badge{display:inline-block;background:#fff3cd;border:1px solid #ffc107;color:#856404;
   font-size:.65rem;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;vertical-align:middle;}
+.kid-badge{display:inline-block;background:#e8f5e9;border:1px solid #66bb6a;color:#2e7d32;
+  font-size:.65rem;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;vertical-align:middle;}
+.chip.kids{background:#e8f5e9;border-color:#66bb6a;color:#2e7d32;}
+.chip.kids.active{background:#2e7d32;border-color:#2e7d32;color:#fff;}
+.kid-check-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
+.kid-check-row input{width:18px;height:18px;accent-color:#2e7d32;cursor:pointer;}
+.kid-check-row label{font-size:.9rem;color:var(--text);cursor:pointer;}
 </style>
 </head>
 <body>
@@ -184,6 +191,7 @@ select.form-input{cursor:pointer;}
   <div class="header">
     <h1>Dinner Picker</h1>
     <div class="filter-scroll"><div class="filter-row" id="filterRow"></div></div>
+    <div style="padding:4px 0 0"><button id="kidsChip1" class="chip kids" onclick="toggleKids(1)">🧒 Kids</button></div>
   </div>
 
   <div class="tab-bar">
@@ -219,6 +227,7 @@ select.form-input{cursor:pointer;}
   <!-- MEALS TAB -->
   <div class="tab-panel" id="panel-meals">
     <div class="filter-scroll"><div class="filter-row" id="filterRow2"></div></div>
+    <div style="padding:4px 0 0"><button id="kidsChip2" class="chip kids" onclick="toggleKids(2)">🧒 Kids</button></div>
     <div class="section-hdr">
       <span class="section-title">All Meals</span>
       <span class="section-title" id="mealCount"></span>
@@ -285,6 +294,10 @@ select.form-input{cursor:pointer;}
         <label class="form-label">Personal Notes</label>
         <textarea class="form-input" id="editNotes" placeholder="e.g. double the garlic, use panko breadcrumbs…"></textarea>
       </div>
+      <div class="kid-check-row">
+        <input type="checkbox" id="editKidFriendly"/>
+        <label for="editKidFriendly">🧒 Kid Friendly</label>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal('editModal')" style="flex:1">Cancel</button>
@@ -305,6 +318,7 @@ select.form-input{cursor:pointer;}
       <div class="filter-scroll" style="margin:0 -20px;padding:0 20px 12px;">
         <div class="filter-row" id="filterRow3"></div>
       </div>
+      <div style="padding:0 0 8px"><button id="kidsChip3" class="chip kids" onclick="toggleKids(3)">🧒 Kids</button></div>
       <div class="meal-picker-list" id="mealPickerList"></div>
     </div>
   </div>
@@ -333,7 +347,7 @@ select.form-input{cursor:pointer;}
 
 const DEFAULT_MEALS = [
   {
-    id:'m1',name:'Spaghetti Bolognese',cuisine:'Italian',votes:0,notes:'',
+    id:'m1',kidFriendly:true,name:'Spaghetti Bolognese',cuisine:'Italian',votes:0,notes:'',
     ingredients:[
       {qty:400,unit:'g',item:'spaghetti'},
       {qty:500,unit:'g',item:'ground beef'},
@@ -416,7 +430,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m5',name:'Margherita Pizza',cuisine:'Italian',votes:0,notes:'',
+    id:'m5',kidFriendly:true,name:'Margherita Pizza',cuisine:'Italian',votes:0,notes:'',
     ingredients:[
       {qty:1,unit:'',item:'store-bought pizza dough'},
       {qty:200,unit:'ml',item:'tomato sauce'},
@@ -515,7 +529,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m10',name:'Chicken Fried Rice',cuisine:'Asian',votes:0,notes:'',
+    id:'m10',kidFriendly:true,name:'Chicken Fried Rice',cuisine:'Asian',votes:0,notes:'',
     ingredients:[
       {qty:400,unit:'g',item:'cooked rice (day-old is best)'},
       {qty:400,unit:'g',item:'chicken breast, diced'},
@@ -558,7 +572,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m12',name:'Classic Burger',cuisine:'American',votes:0,notes:'',
+    id:'m12',kidFriendly:true,name:'Classic Burger',cuisine:'American',votes:0,notes:'',
     ingredients:[
       {qty:600,unit:'g',item:'ground beef (80/20)'},
       {qty:4,unit:'',item:'burger buns'},
@@ -601,7 +615,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m14',name:'Mac and Cheese',cuisine:'American',votes:0,notes:'',
+    id:'m14',kidFriendly:true,name:'Mac and Cheese',cuisine:'American',votes:0,notes:'',
     ingredients:[
       {qty:400,unit:'g',item:'elbow macaroni'},
       {qty:3,unit:'tbsp',item:'butter'},
@@ -622,7 +636,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m15',name:'Chicken Pot Pie',cuisine:'American',votes:0,notes:'',
+    id:'m15',kidFriendly:true,name:'Chicken Pot Pie',cuisine:'American',votes:0,notes:'',
     ingredients:[
       {qty:600,unit:'g',item:'cooked chicken, shredded'},
       {qty:2,unit:'',item:'carrots, diced'},
@@ -665,7 +679,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m17',name:'Meatloaf',cuisine:'American',votes:0,notes:'',
+    id:'m17',kidFriendly:true,name:'Meatloaf',cuisine:'American',votes:0,notes:'',
     ingredients:[
       {qty:800,unit:'g',item:'ground beef'},
       {qty:1,unit:'',item:'onion, finely diced'},
@@ -748,7 +762,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m21',name:'Sloppy Joes',cuisine:'American',votes:0,notes:'',
+    id:'m21',kidFriendly:true,name:'Sloppy Joes',cuisine:'American',votes:0,notes:'',
     ingredients:[
       {qty:700,unit:'g',item:'ground beef'},
       {qty:1,unit:'',item:'onion, diced'},
@@ -789,7 +803,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m23',name:'BBQ Baby Back Ribs',cuisine:'American',votes:0,notes:'',
+    id:'m23',kidFriendly:true,name:'BBQ Baby Back Ribs',cuisine:'American',votes:0,notes:'',
     ingredients:[
       {qty:2,unit:'racks',item:'baby back pork ribs'},
       {qty:2,unit:'tbsp',item:'brown sugar'},
@@ -831,7 +845,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m25',name:'Tuna Noodle Casserole',cuisine:'American',votes:0,notes:'',
+    id:'m25',kidFriendly:true,name:'Tuna Noodle Casserole',cuisine:'American',votes:0,notes:'',
     ingredients:[
       {qty:300,unit:'g',item:'egg noodles'},
       {qty:3,unit:'cans',item:'tuna, drained'},
@@ -873,7 +887,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m27',name:'Pancakes for Dinner',cuisine:'American',votes:0,notes:'',
+    id:'m27',kidFriendly:true,name:'Pancakes for Dinner',cuisine:'American',votes:0,notes:'',
     ingredients:[
       {qty:300,unit:'g',item:'all-purpose flour'},
       {qty:2,unit:'tbsp',item:'sugar'},
@@ -895,7 +909,7 @@ const DEFAULT_MEALS = [
   },
   // ── Italian ───────────────────────────────────────────
   {
-    id:'m28',name:'Chicken Parmesan',cuisine:'Italian',votes:0,notes:'',
+    id:'m28',kidFriendly:true,name:'Chicken Parmesan',cuisine:'Italian',votes:0,notes:'',
     ingredients:[
       {qty:4,unit:'',item:'chicken breasts, pounded thin'},
       {qty:100,unit:'g',item:'breadcrumbs'},
@@ -915,7 +929,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m29',name:'Lasagna',cuisine:'Italian',votes:0,notes:'',
+    id:'m29',kidFriendly:true,name:'Lasagna',cuisine:'Italian',votes:0,notes:'',
     ingredients:[
       {qty:12,unit:'sheets',item:'lasagna noodles'},
       {qty:600,unit:'g',item:'ground beef'},
@@ -999,7 +1013,7 @@ const DEFAULT_MEALS = [
   },
   // ── Mexican ───────────────────────────────────────────
   {
-    id:'m33',name:'Cheese Quesadillas',cuisine:'Mexican',votes:0,notes:'',
+    id:'m33',kidFriendly:true,name:'Cheese Quesadillas',cuisine:'Mexican',votes:0,notes:'',
     ingredients:[
       {qty:8,unit:'',item:'large flour tortillas'},
       {qty:400,unit:'g',item:'cheddar or Monterey Jack, shredded'},
@@ -1304,7 +1318,7 @@ const DEFAULT_MEALS = [
     ]
   },
   {
-    id:'m47',name:'Teriyaki Chicken',cuisine:'Asian',votes:0,notes:'',
+    id:'m47',kidFriendly:true,name:'Teriyaki Chicken',cuisine:'Asian',votes:0,notes:'',
     ingredients:[
       {qty:600,unit:'g',item:'chicken thighs, boneless'},
       {qty:60,unit:'ml',item:'soy sauce'},
@@ -1445,6 +1459,7 @@ let state = {
   filterActive3: 'All',
   editingMealId: null,
   plannerDayEditing: null,
+  kidFilter: false,
 };
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -1503,11 +1518,23 @@ function renderFilters() {
       `<button class="chip${active===c?' active':''}" onclick="${fn}('${esc(c)}')">${esc(c)}</button>`
     ).join('');
   });
+  // Sync Kids chip state across all tabs
+  [1,2,3].forEach(i => {
+    const btn = document.getElementById('kidsChip'+i);
+    if (btn) btn.classList.toggle('active', state.kidFilter);
+  });
 }
 
 function setFilter1(c) { state.activeFilter = c; renderFilters(); }
 function setFilter2(c) { state.filterActive2 = c; renderFilters(); renderMealsTab(); }
 function setFilter3(c) { state.filterActive3 = c; renderFilters(); renderMealPickerList(); }
+
+function toggleKids(tab) {
+  state.kidFilter = !state.kidFilter;
+  renderFilters();
+  if (tab === 2) renderMealsTab();
+  else if (tab === 3) renderMealPickerList();
+}
 
 // ── Tabs ──────────────────────────────────────────────────
 function switchTab(tab) {
@@ -1521,6 +1548,7 @@ function switchTab(tab) {
 function pickDinner() {
   const eligible = state.meals.filter(m =>
     (state.activeFilter === 'All' || m.cuisine === state.activeFilter) &&
+    (!state.kidFilter || m.kidFriendly) &&
     !state.skippedIds.includes(m.id)
   );
   if (!eligible.length) {
@@ -1617,7 +1645,10 @@ function renderPickTab() {
 // ── Meals tab ─────────────────────────────────────────────
 function renderMealsTab() {
   const filtered = state.meals
-    .filter(m => state.filterActive2 === 'All' || m.cuisine === state.filterActive2)
+    .filter(m =>
+      (state.filterActive2 === 'All' || m.cuisine === state.filterActive2) &&
+      (!state.kidFilter || m.kidFriendly)
+    )
     .sort((a, b) => a.name.localeCompare(b.name));
 
   document.getElementById('mealCount').textContent =
@@ -1627,7 +1658,7 @@ function renderMealsTab() {
     ? filtered.map(m => `
       <div class="meal-item">
         <div class="meal-info">
-          <div class="meal-item-name" onclick="openRecipeModalFor('${m.id}')">${esc(m.name)}${m.notes ? '<span class="notes-badge">note</span>' : ''}</div>
+          <div class="meal-item-name" onclick="openRecipeModalFor('${m.id}')">${esc(m.name)}${m.notes ? '<span class="notes-badge">note</span>' : ''}${m.kidFriendly ? '<span class="kid-badge">K</span>' : ''}</div>
           <div class="meal-item-tag">${esc(m.cuisine)}</div>
         </div>
         <div class="meal-votes">
@@ -1666,6 +1697,7 @@ function openAddMealModal() {
   document.querySelector('#editModal .modal-title').textContent = 'Add Meal';
   document.getElementById('editName').value = '';
   document.getElementById('editNotes').value = '';
+  document.getElementById('editKidFriendly').checked = false;
   populateCuisineSelect(null);
   openModal('editModal');
 }
@@ -1676,6 +1708,7 @@ function openEditModal(id) {
   document.querySelector('#editModal .modal-title').textContent = 'Edit Meal';
   document.getElementById('editName').value  = meal?.name  || '';
   document.getElementById('editNotes').value = meal?.notes || '';
+  document.getElementById('editKidFriendly').checked = meal?.kidFriendly || false;
   populateCuisineSelect(meal?.cuisine || null);
   openModal('editModal');
 }
@@ -1696,12 +1729,13 @@ function saveEdit() {
     cuisine = (prompt('New cuisine name:') || '').trim() || 'Other';
   }
   const notes = document.getElementById('editNotes').value.trim();
+  const kidFriendly = document.getElementById('editKidFriendly').checked;
 
   if (state.editingMealId) {
     const meal = state.meals.find(m => m.id === state.editingMealId);
-    if (meal) { meal.name = name; meal.cuisine = cuisine; meal.notes = notes; }
+    if (meal) { meal.name = name; meal.cuisine = cuisine; meal.notes = notes; meal.kidFriendly = kidFriendly; }
   } else {
-    state.meals.push({ id: 'm' + Date.now(), name, cuisine, votes: 0, notes, ingredients: [], steps: [] });
+    state.meals.push({ id: 'm' + Date.now(), name, cuisine, votes: 0, notes, kidFriendly, ingredients: [], steps: [] });
   }
   save();
   closeModal('editModal');
@@ -1798,13 +1832,16 @@ function openMealPicker(day) {
 
 function renderMealPickerList() {
   const filtered = state.meals
-    .filter(m => state.filterActive3 === 'All' || m.cuisine === state.filterActive3)
+    .filter(m =>
+      (state.filterActive3 === 'All' || m.cuisine === state.filterActive3) &&
+      (!state.kidFilter || m.kidFriendly)
+    )
     .sort((a, b) => a.name.localeCompare(b.name));
 
   document.getElementById('mealPickerList').innerHTML = filtered.length
     ? filtered.map(m =>
         `<div class="mp-item" onclick="assignMeal('${m.id}')">
-          <span class="mp-item-name">${esc(m.name)}</span>
+          <span class="mp-item-name">${esc(m.name)}${m.kidFriendly ? '<span class="kid-badge">K</span>' : ''}</span>
           <span class="mp-item-tag">${esc(m.cuisine)}</span>
         </div>`
       ).join('')
