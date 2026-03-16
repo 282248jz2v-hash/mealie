@@ -224,6 +224,7 @@ select.form-input{cursor:pointer;}
       <span class="section-title" id="mealCount"></span>
     </div>
     <div class="card" id="mealList"></div>
+    <button class="btn-primary" onclick="openAddMealModal()">+ Add Meal</button>
     <div class="io-row">
       <button class="io-btn" onclick="exportData()">Export JSON</button>
       <button class="io-btn" onclick="document.getElementById('importFile').click()">Import JSON</button>
@@ -324,3 +325,758 @@ select.form-input{cursor:pointer;}
     </div>
   </div>
 </div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DINNER PICKER — App Script
+// ═══════════════════════════════════════════════════════
+
+const DEFAULT_MEALS = [
+  {
+    id:'m1',name:'Spaghetti Bolognese',cuisine:'Italian',votes:0,notes:'',
+    ingredients:[
+      {qty:400,unit:'g',item:'spaghetti'},
+      {qty:500,unit:'g',item:'ground beef'},
+      {qty:1,unit:'can',item:'crushed tomatoes'},
+      {qty:1,unit:'',item:'onion, diced'},
+      {qty:3,unit:'cloves',item:'garlic, minced'},
+      {qty:2,unit:'tbsp',item:'olive oil'},
+      {qty:1,unit:'tsp',item:'dried oregano'},
+      {qty:0,unit:'',item:'salt & pepper to taste'},
+      {qty:0,unit:'',item:'parmesan, to serve'},
+    ],
+    steps:[
+      'Heat olive oil in a large pan over medium heat. Sauté onion until soft, ~5 min.',
+      'Add garlic and cook 1 min, then add ground beef and brown, breaking it up.',
+      'Add crushed tomatoes and oregano. Simmer 20 min, season with salt & pepper.',
+      'Cook spaghetti per package instructions. Drain and toss with sauce.',
+      'Serve topped with grated parmesan.',
+    ]
+  },
+  {
+    id:'m2',name:'Chicken Tacos',cuisine:'Mexican',votes:0,notes:'',
+    ingredients:[
+      {qty:600,unit:'g',item:'chicken thighs'},
+      {qty:2,unit:'tsp',item:'cumin'},
+      {qty:1,unit:'tsp',item:'smoked paprika'},
+      {qty:1,unit:'tsp',item:'chili powder'},
+      {qty:8,unit:'',item:'small corn tortillas'},
+      {qty:1,unit:'',item:'avocado, sliced'},
+      {qty:1,unit:'',item:'lime, cut into wedges'},
+      {qty:0,unit:'',item:'salsa, sour cream, cilantro to serve'},
+    ],
+    steps:[
+      'Mix cumin, paprika, chili powder and rub over chicken thighs.',
+      'Cook chicken in a hot skillet 6–7 min per side until cooked through. Rest 5 min.',
+      'Slice chicken and warm tortillas in a dry pan.',
+      'Assemble tacos with chicken, avocado, salsa, and a squeeze of lime.',
+    ]
+  },
+  {
+    id:'m3',name:'Butter Chicken',cuisine:'Indian',votes:0,notes:'',
+    ingredients:[
+      {qty:700,unit:'g',item:'chicken breast, cubed'},
+      {qty:400,unit:'ml',item:'tomato passata'},
+      {qty:200,unit:'ml',item:'heavy cream'},
+      {qty:2,unit:'tbsp',item:'butter'},
+      {qty:1,unit:'',item:'onion, finely diced'},
+      {qty:3,unit:'cloves',item:'garlic, minced'},
+      {qty:1,unit:'tbsp',item:'garam masala'},
+      {qty:1,unit:'tsp',item:'turmeric'},
+      {qty:1,unit:'tsp',item:'ginger, grated'},
+      {qty:0,unit:'',item:'rice or naan to serve'},
+    ],
+    steps:[
+      'Melt butter in a large pan. Sauté onion until golden, ~8 min.',
+      'Add garlic, ginger, garam masala, and turmeric. Cook 2 min.',
+      'Add chicken and brown on all sides, ~5 min.',
+      'Pour in passata and simmer 15 min. Stir in cream and cook 5 more min.',
+      'Serve over rice or with naan.',
+    ]
+  },
+  {
+    id:'m4',name:'Pad Thai',cuisine:'Asian',votes:0,notes:'',
+    ingredients:[
+      {qty:300,unit:'g',item:'rice noodles'},
+      {qty:300,unit:'g',item:'shrimp or tofu'},
+      {qty:3,unit:'tbsp',item:'fish sauce'},
+      {qty:2,unit:'tbsp',item:'tamarind paste'},
+      {qty:1,unit:'tbsp',item:'brown sugar'},
+      {qty:2,unit:'',item:'eggs'},
+      {qty:3,unit:'',item:'scallions, sliced'},
+      {qty:80,unit:'g',item:'bean sprouts'},
+      {qty:0,unit:'',item:'peanuts, lime, chili to serve'},
+    ],
+    steps:[
+      'Soak rice noodles in warm water 20 min. Drain. Mix fish sauce, tamarind, and sugar.',
+      'Heat wok over high heat with oil. Cook shrimp/tofu until done, push to side.',
+      'Add noodles and sauce, toss to coat. Push aside and scramble eggs in pan.',
+      'Toss everything together with scallions and sprouts.',
+      'Serve topped with peanuts, lime wedges, and chili flakes.',
+    ]
+  },
+  {
+    id:'m5',name:'Margherita Pizza',cuisine:'Italian',votes:0,notes:'',
+    ingredients:[
+      {qty:1,unit:'',item:'store-bought pizza dough'},
+      {qty:200,unit:'ml',item:'tomato sauce'},
+      {qty:200,unit:'g',item:'fresh mozzarella'},
+      {qty:10,unit:'leaves',item:'fresh basil'},
+      {qty:2,unit:'tbsp',item:'olive oil'},
+      {qty:0,unit:'',item:'salt & pepper to taste'},
+    ],
+    steps:[
+      'Preheat oven to 250°C (480°F) with a baking sheet inside.',
+      'Stretch dough to ~12" circle on parchment. Spread tomato sauce.',
+      'Top with torn mozzarella. Season with salt.',
+      'Slide onto hot baking sheet and bake 10–12 min until crust is golden.',
+      'Add fresh basil and a drizzle of olive oil before serving.',
+    ]
+  },
+  {
+    id:'m6',name:'Beef Stir-Fry',cuisine:'Asian',votes:0,notes:'',
+    ingredients:[
+      {qty:500,unit:'g',item:'beef sirloin, thin sliced'},
+      {qty:2,unit:'',item:'bell peppers, sliced'},
+      {qty:200,unit:'g',item:'broccoli florets'},
+      {qty:3,unit:'tbsp',item:'soy sauce'},
+      {qty:1,unit:'tbsp',item:'oyster sauce'},
+      {qty:1,unit:'tsp',item:'sesame oil'},
+      {qty:2,unit:'cloves',item:'garlic, minced'},
+      {qty:1,unit:'tsp',item:'cornstarch'},
+      {qty:0,unit:'',item:'steamed rice to serve'},
+    ],
+    steps:[
+      'Toss beef with cornstarch, soy sauce, and sesame oil. Marinate 10 min.',
+      'Mix remaining soy sauce and oyster sauce in a small bowl.',
+      'Heat wok over high heat. Sear beef in batches until browned. Set aside.',
+      'Stir-fry garlic, peppers, and broccoli 3–4 min. Add beef back.',
+      'Pour sauce over everything and toss until coated. Serve with rice.',
+    ]
+  },
+  {
+    id:'m7',name:'Black Bean Burrito Bowl',cuisine:'Mexican',votes:0,notes:'',
+    ingredients:[
+      {qty:2,unit:'cans',item:'black beans, drained'},
+      {qty:300,unit:'g',item:'white rice'},
+      {qty:1,unit:'tsp',item:'cumin'},
+      {qty:1,unit:'tsp',item:'chili powder'},
+      {qty:2,unit:'',item:'bell peppers, sliced'},
+      {qty:1,unit:'',item:'red onion, diced'},
+      {qty:1,unit:'',item:'avocado, diced'},
+      {qty:0,unit:'',item:'salsa, sour cream, cilantro to serve'},
+    ],
+    steps:[
+      'Cook rice per package instructions.',
+      'Season beans with cumin, chili powder, and salt. Warm in a saucepan.',
+      'Sauté peppers and onion in oil over medium-high heat until softened.',
+      'Assemble bowls: rice, beans, peppers, avocado.',
+      'Top with salsa, sour cream, and cilantro.',
+    ]
+  },
+  {
+    id:'m8',name:'Grilled Salmon',cuisine:'American',votes:0,notes:'',
+    ingredients:[
+      {qty:4,unit:'fillets',item:'salmon (150 g each)'},
+      {qty:2,unit:'tbsp',item:'olive oil'},
+      {qty:1,unit:'',item:'lemon, zested & juiced'},
+      {qty:2,unit:'cloves',item:'garlic, minced'},
+      {qty:1,unit:'tsp',item:'dried dill'},
+      {qty:0,unit:'',item:'salt & pepper to taste'},
+      {qty:0,unit:'',item:'steamed vegetables to serve'},
+    ],
+    steps:[
+      'Mix olive oil, lemon zest, garlic, and dill. Brush over salmon.',
+      'Season with salt and pepper. Let sit 10 min.',
+      'Heat grill or pan to medium-high. Cook salmon skin-side down 4 min.',
+      'Flip and cook 3–4 more min until flaky.',
+      'Squeeze lemon over and serve with steamed vegetables.',
+    ]
+  },
+  {
+    id:'m9',name:'Greek Salad with Pita',cuisine:'Mediterranean',votes:0,notes:'',
+    ingredients:[
+      {qty:4,unit:'',item:'tomatoes, chunked'},
+      {qty:1,unit:'',item:'cucumber, chunked'},
+      {qty:1,unit:'',item:'red onion, thinly sliced'},
+      {qty:200,unit:'g',item:'feta cheese'},
+      {qty:80,unit:'g',item:'kalamata olives'},
+      {qty:3,unit:'tbsp',item:'olive oil'},
+      {qty:1,unit:'tbsp',item:'red wine vinegar'},
+      {qty:1,unit:'tsp',item:'dried oregano'},
+      {qty:4,unit:'',item:'pita breads, warmed'},
+    ],
+    steps:[
+      'Combine tomatoes, cucumber, onion, and olives in a large bowl.',
+      'Whisk olive oil, vinegar, and oregano together.',
+      'Pour dressing over salad and toss gently.',
+      'Top with crumbled feta.',
+      'Serve with warm pita bread.',
+    ]
+  },
+  {
+    id:'m10',name:'Chicken Fried Rice',cuisine:'Asian',votes:0,notes:'',
+    ingredients:[
+      {qty:400,unit:'g',item:'cooked rice (day-old is best)'},
+      {qty:400,unit:'g',item:'chicken breast, diced'},
+      {qty:3,unit:'',item:'eggs'},
+      {qty:1,unit:'',item:'carrot, diced'},
+      {qty:3,unit:'',item:'scallions, sliced'},
+      {qty:3,unit:'tbsp',item:'soy sauce'},
+      {qty:1,unit:'tbsp',item:'sesame oil'},
+      {qty:2,unit:'cloves',item:'garlic, minced'},
+      {qty:100,unit:'g',item:'frozen peas'},
+    ],
+    steps:[
+      'Season chicken with salt and cook in a hot wok until done. Set aside.',
+      'Add garlic and carrot, stir-fry 2 min.',
+      'Push to side, scramble eggs in the pan, then break apart.',
+      'Add rice, peas, soy sauce, and sesame oil. Toss everything together.',
+      'Return chicken and scallions, toss and serve.',
+    ]
+  },
+  {
+    id:'m11',name:'Lentil Soup',cuisine:'Mediterranean',votes:0,notes:'',
+    ingredients:[
+      {qty:400,unit:'g',item:'red lentils, rinsed'},
+      {qty:1,unit:'',item:'onion, diced'},
+      {qty:3,unit:'cloves',item:'garlic, minced'},
+      {qty:2,unit:'',item:'carrots, diced'},
+      {qty:1,unit:'can',item:'diced tomatoes'},
+      {qty:1.5,unit:'L',item:'vegetable broth'},
+      {qty:2,unit:'tsp',item:'cumin'},
+      {qty:1,unit:'tsp',item:'turmeric'},
+      {qty:2,unit:'tbsp',item:'olive oil'},
+      {qty:0,unit:'',item:'lemon juice & parsley to serve'},
+    ],
+    steps:[
+      'Sauté onion in olive oil until soft. Add garlic, cumin, and turmeric, cook 1 min.',
+      'Add carrots, lentils, tomatoes, and broth. Bring to a boil.',
+      'Reduce heat and simmer 25 min until lentils are tender.',
+      'Blend partially with an immersion blender for a creamy texture.',
+      'Season with salt, a squeeze of lemon, and fresh parsley.',
+    ]
+  },
+  {
+    id:'m12',name:'Classic Burger',cuisine:'American',votes:0,notes:'',
+    ingredients:[
+      {qty:600,unit:'g',item:'ground beef (80/20)'},
+      {qty:4,unit:'',item:'burger buns'},
+      {qty:4,unit:'slices',item:'cheddar cheese'},
+      {qty:1,unit:'',item:'tomato, sliced'},
+      {qty:1,unit:'',item:'lettuce leaves'},
+      {qty:1,unit:'',item:'red onion, sliced'},
+      {qty:0,unit:'',item:'ketchup, mustard, mayo to serve'},
+    ],
+    steps:[
+      'Divide beef into 4 patties ~2 cm thick. Season generously with salt & pepper.',
+      'Heat grill or cast iron pan to high. Cook patties 3–4 min per side.',
+      'Add cheese in the last minute and cover to melt.',
+      'Toast buns lightly on the grill.',
+      'Assemble with lettuce, tomato, onion, and your preferred sauces.',
+    ]
+  },
+];
+
+// ── State ─────────────────────────────────────────────────
+let state = {
+  meals: [],
+  history: [],         // [{id, name, cuisine, date}]
+  planner: {},         // {Mon: mealId, ...}
+  currentPickId: null,
+  skippedIds: [],
+  servings: 4,
+  activeFilter: 'All',
+  filterActive2: 'All',
+  filterActive3: 'All',
+  editingMealId: null,
+  plannerDayEditing: null,
+};
+
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const STORAGE_KEY = 'dinnerPickerState';
+
+// ── Persistence ───────────────────────────────────────────
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    meals: state.meals,
+    history: state.history,
+    planner: state.planner,
+  }));
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (Array.isArray(d.meals) && d.meals.length) state.meals = d.meals;
+    if (Array.isArray(d.history)) state.history = d.history;
+    if (d.planner && typeof d.planner === 'object') state.planner = d.planner;
+  } catch(e) { console.warn('Failed to load state', e); }
+}
+
+// ── Init ──────────────────────────────────────────────────
+function init() {
+  state.meals = JSON.parse(JSON.stringify(DEFAULT_MEALS));
+  loadFromStorage();
+  renderAll();
+}
+
+function renderAll() {
+  renderFilters();
+  renderPickTab();
+  renderMealsTab();
+  renderPlanner();
+}
+
+// ── Cuisines ──────────────────────────────────────────────
+function getCuisines() {
+  return ['All', ...new Set(state.meals.map(m => m.cuisine).sort())];
+}
+
+function renderFilters() {
+  const cuisines = getCuisines();
+  const configs = [
+    {id:'filterRow',  active:state.activeFilter,  fn:'setFilter1'},
+    {id:'filterRow2', active:state.filterActive2, fn:'setFilter2'},
+    {id:'filterRow3', active:state.filterActive3, fn:'setFilter3'},
+  ];
+  configs.forEach(({id, active, fn}) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = cuisines.map(c =>
+      `<button class="chip${active===c?' active':''}" onclick="${fn}('${esc(c)}')">${esc(c)}</button>`
+    ).join('');
+  });
+}
+
+function setFilter1(c) { state.activeFilter = c; renderFilters(); }
+function setFilter2(c) { state.filterActive2 = c; renderFilters(); renderMealsTab(); }
+function setFilter3(c) { state.filterActive3 = c; renderFilters(); renderMealPickerList(); }
+
+// ── Tabs ──────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('panel-'+tab).classList.add('active');
+}
+
+// ── Pick tab ──────────────────────────────────────────────
+function pickDinner() {
+  const eligible = state.meals.filter(m =>
+    (state.activeFilter === 'All' || m.cuisine === state.activeFilter) &&
+    !state.skippedIds.includes(m.id)
+  );
+  if (!eligible.length) {
+    state.skippedIds = [];
+    alert('You\'ve gone through all meals! Starting fresh.');
+    pickDinner();
+    return;
+  }
+  // Weighted random: down-weight recent, boost liked
+  const recentIds = state.history.slice(0, 5).map(h => h.id);
+  const weighted = eligible.map(m => ({
+    m,
+    w: (recentIds.includes(m.id) ? 0.25 : 1) * Math.max(0.1, 1 + m.votes * 0.15)
+  }));
+  const total = weighted.reduce((s, x) => s + x.w, 0);
+  let r = Math.random() * total;
+  let picked = weighted[weighted.length - 1].m;
+  for (const {m, w} of weighted) { r -= w; if (r <= 0) { picked = m; break; } }
+
+  state.currentPickId = picked.id;
+  state.skippedIds.push(picked.id);
+  renderPickResult();
+}
+
+function notTonight() { pickDinner(); }
+
+function voteCurrentPick(v) {
+  if (!state.currentPickId) return;
+  const meal = state.meals.find(m => m.id === state.currentPickId);
+  if (!meal) return;
+  meal.votes = meal.votes === v ? 0 : v;
+  if (meal.votes === 1) {
+    // Add to history on like
+    state.history = [
+      {id: meal.id, name: meal.name, cuisine: meal.cuisine, date: new Date().toISOString()},
+      ...state.history.filter(h => h.id !== meal.id)
+    ].slice(0, 20);
+  }
+  save();
+  renderPickResult();
+}
+
+function clearHistory() {
+  if (!confirm('Clear recent pick history?')) return;
+  state.history = [];
+  save();
+  renderPickTab();
+}
+
+function renderPickResult() {
+  const meal = state.currentPickId ? state.meals.find(m => m.id === state.currentPickId) : null;
+  const box          = document.getElementById('resultBox');
+  const placeholder  = document.getElementById('resultPlaceholder');
+  const nameEl       = document.getElementById('resultName');
+  const tagEl        = document.getElementById('resultCuisineTag');
+  const actions      = document.getElementById('resultActions');
+  const notTonight   = document.getElementById('notTonightBtn');
+
+  if (meal) {
+    box.classList.add('has-result');
+    placeholder.style.display = 'none';
+    nameEl.style.display = tagEl.style.display = actions.style.display = notTonight.style.display = '';
+    nameEl.textContent = meal.name;
+    nameEl.classList.remove('animate');
+    void nameEl.offsetWidth; // reflow
+    nameEl.classList.add('animate');
+    tagEl.textContent = meal.cuisine;
+    document.getElementById('pickLikeBtn').className    = 'vote-btn' + (meal.votes === 1  ? ' liked'    : '');
+    document.getElementById('pickDislikeBtn').className = 'vote-btn' + (meal.votes === -1 ? ' disliked' : '');
+  } else {
+    box.classList.remove('has-result');
+    placeholder.style.display = '';
+    nameEl.style.display = tagEl.style.display = actions.style.display = notTonight.style.display = 'none';
+  }
+}
+
+function renderPickTab() {
+  renderPickResult();
+  const recentSection = document.getElementById('recentSection');
+  const recentList    = document.getElementById('recentList');
+  if (state.history.length) {
+    recentSection.style.display = '';
+    recentList.innerHTML = state.history.slice(0, 8).map(h =>
+      `<div class="pick-item fade-in">
+        <span class="pick-item-name">${esc(h.name)}</span>
+        <span class="pick-item-time">${formatDate(new Date(h.date))}</span>
+      </div>`
+    ).join('');
+  } else {
+    recentSection.style.display = 'none';
+  }
+}
+
+// ── Meals tab ─────────────────────────────────────────────
+function renderMealsTab() {
+  const filtered = state.meals
+    .filter(m => state.filterActive2 === 'All' || m.cuisine === state.filterActive2)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  document.getElementById('mealCount').textContent =
+    `${filtered.length} meal${filtered.length !== 1 ? 's' : ''}`;
+
+  document.getElementById('mealList').innerHTML = filtered.length
+    ? filtered.map(m => `
+      <div class="meal-item">
+        <div class="meal-info">
+          <div class="meal-item-name" onclick="openRecipeModalFor('${m.id}')">${esc(m.name)}${m.notes ? '<span class="notes-badge">note</span>' : ''}</div>
+          <div class="meal-item-tag">${esc(m.cuisine)}</div>
+        </div>
+        <div class="meal-votes">
+          <button class="small-vote${m.votes === 1 ? ' liked' : ''}"    onclick="voteMeal('${m.id}', 1)">👍</button>
+          <button class="small-vote${m.votes === -1 ? ' disliked' : ''}" onclick="voteMeal('${m.id}',-1)">👎</button>
+        </div>
+        <button class="icon-btn" onclick="openEditModal('${m.id}')" title="Edit">✏️</button>
+        <button class="icon-btn" onclick="deleteMeal('${m.id}')" title="Delete">🗑️</button>
+      </div>`
+    ).join('')
+    : '<div class="empty-state">No meals found.</div>';
+}
+
+function voteMeal(id, v) {
+  const meal = state.meals.find(m => m.id === id);
+  if (!meal) return;
+  meal.votes = meal.votes === v ? 0 : v;
+  save();
+  renderMealsTab();
+}
+
+function deleteMeal(id) {
+  if (!confirm('Delete this meal?')) return;
+  state.meals = state.meals.filter(m => m.id !== id);
+  DAYS.forEach(d => { if (state.planner[d] === id) delete state.planner[d]; });
+  if (state.currentPickId === id) { state.currentPickId = null; renderPickResult(); }
+  save();
+  renderFilters();
+  renderMealsTab();
+  renderPlanner();
+}
+
+// ── Edit / Add modal ──────────────────────────────────────
+function openAddMealModal() {
+  state.editingMealId = null;
+  document.querySelector('#editModal .modal-title').textContent = 'Add Meal';
+  document.getElementById('editName').value = '';
+  document.getElementById('editNotes').value = '';
+  populateCuisineSelect(null);
+  openModal('editModal');
+}
+
+function openEditModal(id) {
+  const meal = state.meals.find(m => m.id === id);
+  state.editingMealId = id;
+  document.querySelector('#editModal .modal-title').textContent = 'Edit Meal';
+  document.getElementById('editName').value  = meal?.name  || '';
+  document.getElementById('editNotes').value = meal?.notes || '';
+  populateCuisineSelect(meal?.cuisine || null);
+  openModal('editModal');
+}
+
+function populateCuisineSelect(current) {
+  const sel = document.getElementById('editCuisine');
+  const list = getCuisines().filter(c => c !== 'All');
+  sel.innerHTML = list.map(c =>
+    `<option${current === c ? ' selected' : ''}>${esc(c)}</option>`
+  ).join('') + '<option value="__new__">+ New cuisine…</option>';
+}
+
+function saveEdit() {
+  const name = document.getElementById('editName').value.trim();
+  if (!name) { alert('Please enter a meal name.'); return; }
+  let cuisine = document.getElementById('editCuisine').value;
+  if (cuisine === '__new__') {
+    cuisine = (prompt('New cuisine name:') || '').trim() || 'Other';
+  }
+  const notes = document.getElementById('editNotes').value.trim();
+
+  if (state.editingMealId) {
+    const meal = state.meals.find(m => m.id === state.editingMealId);
+    if (meal) { meal.name = name; meal.cuisine = cuisine; meal.notes = notes; }
+  } else {
+    state.meals.push({ id: 'm' + Date.now(), name, cuisine, votes: 0, notes, ingredients: [], steps: [] });
+  }
+  save();
+  closeModal('editModal');
+  renderAll();
+}
+
+// ── Recipe modal ──────────────────────────────────────────
+function openRecipeModal() {
+  if (state.currentPickId) openRecipeModalFor(state.currentPickId);
+}
+
+function openRecipeModalFor(id) {
+  const meal = state.meals.find(m => m.id === id);
+  if (!meal) return;
+  // Store id on modal for servings re-render
+  document.getElementById('recipeModal').dataset.mealId = id;
+  document.getElementById('recipeModalTitle').textContent = meal.name;
+  // Reset servings buttons
+  document.querySelectorAll('.srv-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.textContent) === state.servings)
+  );
+  renderRecipeIngredients(meal);
+  renderRecipeSteps(meal);
+  openModal('recipeModal');
+}
+
+function setServings(n) {
+  state.servings = n;
+  document.querySelectorAll('.srv-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.textContent) === n)
+  );
+  const id = document.getElementById('recipeModal').dataset.mealId;
+  const meal = id ? state.meals.find(m => m.id === id) : null;
+  if (meal) renderRecipeIngredients(meal);
+}
+
+function renderRecipeIngredients(meal) {
+  const factor = state.servings / 4;
+  const el = document.getElementById('recipeIngredients');
+  if (!meal.ingredients?.length) {
+    el.innerHTML = '<li style="color:var(--muted);font-size:.9rem">No ingredients listed yet.</li>';
+    return;
+  }
+  el.innerHTML = meal.ingredients.map(ing => {
+    let qtyStr = '';
+    if (ing.qty) {
+      const scaled = ing.qty * factor;
+      const fmt = Number.isInteger(scaled) ? String(scaled) : scaled.toFixed(1).replace(/\.0$/, '');
+      qtyStr = ing.unit ? `${fmt} ${ing.unit}` : fmt;
+    }
+    return `<li><span class="ing-qty">${esc(qtyStr)}</span><span>${esc(ing.item)}</span></li>`;
+  }).join('');
+}
+
+function renderRecipeSteps(meal) {
+  const el = document.getElementById('recipeSteps');
+  if (!meal.steps?.length) {
+    el.innerHTML = '<li style="color:var(--muted);font-size:.9rem"><span class="step-num">—</span><span>No steps listed yet.</span></li>';
+    return;
+  }
+  el.innerHTML = meal.steps.map((s, i) =>
+    `<li><span class="step-num">${i + 1}</span><span>${esc(s)}</span></li>`
+  ).join('');
+}
+
+// ── Planner ───────────────────────────────────────────────
+function renderPlanner() {
+  document.getElementById('weekGrid').innerHTML = DAYS.map(day => {
+    const mealId = state.planner[day];
+    const meal   = mealId ? state.meals.find(m => m.id === mealId) : null;
+    return `<div class="day-row" onclick="openMealPicker('${day}')">
+      <span class="day-label">${day}</span>
+      <span class="day-meal${meal ? '' : ' empty'}">${meal ? esc(meal.name) : 'Tap to add…'}</span>
+      ${meal ? `<button class="day-clear" onclick="clearDay(event,'${day}')" title="Remove">×</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function clearDay(e, day) {
+  e.stopPropagation();
+  delete state.planner[day];
+  save();
+  renderPlanner();
+}
+
+function openMealPicker(day) {
+  state.plannerDayEditing = day;
+  state.filterActive3 = 'All';
+  document.getElementById('mealPickerTitle').textContent = `Choose meal for ${day}`;
+  renderFilters();
+  renderMealPickerList();
+  openModal('mealPickerModal');
+}
+
+function renderMealPickerList() {
+  const filtered = state.meals
+    .filter(m => state.filterActive3 === 'All' || m.cuisine === state.filterActive3)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  document.getElementById('mealPickerList').innerHTML = filtered.length
+    ? filtered.map(m =>
+        `<div class="mp-item" onclick="assignMeal('${m.id}')">
+          <span class="mp-item-name">${esc(m.name)}</span>
+          <span class="mp-item-tag">${esc(m.cuisine)}</span>
+        </div>`
+      ).join('')
+    : '<div class="empty-state">No meals found.</div>';
+}
+
+function assignMeal(mealId) {
+  if (state.plannerDayEditing) {
+    state.planner[state.plannerDayEditing] = mealId;
+    save();
+    renderPlanner();
+  }
+  closeModal('mealPickerModal');
+}
+
+// ── Shopping list ─────────────────────────────────────────
+function openShoppingList() {
+  const meals = DAYS
+    .map(d => state.planner[d])
+    .filter(Boolean)
+    .map(id => state.meals.find(m => m.id === id))
+    .filter(Boolean);
+
+  if (!meals.length) { alert('Add meals to your planner first!'); return; }
+
+  document.getElementById('shopModalBody').innerHTML = meals.map(meal => {
+    if (!meal.ingredients?.length) return `<div class="shop-group"><div class="shop-group-title">${esc(meal.name)}</div><p style="color:var(--muted);font-size:.85rem;padding:4px 0">No ingredients listed.</p></div>`;
+    return `<div class="shop-group">
+      <div class="shop-group-title">${esc(meal.name)}</div>
+      ${meal.ingredients.map((ing, i) => {
+        let label = ing.item;
+        if (ing.qty) {
+          const fmt = Number.isInteger(ing.qty) ? String(ing.qty) : ing.qty.toFixed(1);
+          label = `${fmt}${ing.unit ? ' ' + ing.unit : ''} ${label}`;
+        }
+        return `<div class="shop-item">
+          <input type="checkbox" class="shop-check" id="sc-${meal.id}-${i}"/>
+          <label class="shop-text" for="sc-${meal.id}-${i}">${esc(label)}</label>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+
+  openModal('shopModal');
+}
+
+function copyShoppingList() {
+  const meals = DAYS
+    .map(d => state.planner[d])
+    .filter(Boolean)
+    .map(id => state.meals.find(m => m.id === id))
+    .filter(Boolean);
+
+  const lines = meals.flatMap(meal => {
+    const header = `\n${meal.name}:`;
+    if (!meal.ingredients?.length) return [header, '  (no ingredients)'];
+    return [header, ...meal.ingredients.map(ing => {
+      const fmt = ing.qty ? `${ing.qty}${ing.unit ? ' ' + ing.unit : ''} ` : '';
+      return `  • ${fmt}${ing.item}`;
+    })];
+  });
+
+  navigator.clipboard?.writeText(lines.join('\n').trim())
+    .then(() => alert('Copied to clipboard!'))
+    .catch(() => alert('Copy failed — try selecting text manually.'));
+}
+
+// ── Import / Export ───────────────────────────────────────
+function exportData() {
+  const json = JSON.stringify({meals: state.meals, history: state.history, planner: state.planner}, null, 2);
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([json], {type:'application/json'})),
+    download: 'dinner-picker.json',
+  });
+  a.click();
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (Array.isArray(d.meals)) state.meals = d.meals;
+      if (Array.isArray(d.history)) state.history = d.history;
+      if (d.planner) state.planner = d.planner;
+      save();
+      renderAll();
+      alert('Import successful!');
+    } catch { alert('Invalid JSON file.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── Modals ────────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function handleModalBackdrop(e, id) {
+  if (e.target === document.getElementById(id)) closeModal(id);
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDate(d) {
+  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff < 7)  return `${diff}d ago`;
+  return d.toLocaleDateString(undefined, {month:'short', day:'numeric'});
+}
+
+// ── Boot ──────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
